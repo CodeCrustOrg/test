@@ -14,6 +14,8 @@ const { Bot } = require('./bot.js');
 const { Files } = require('./files.js');
 const { Syncer } = require('./sync.js');
 const pdf = require('./pdf.js');
+const { buildPack, period } = require('./export.js');
+const { readInvoice, fetchEmailAttachments } = require('./invoices.js');
 
 const log = {
   info: (...a) => console.log(new Date().toISOString(), ...a),
@@ -22,7 +24,7 @@ const log = {
 
 function pageHtml(root) {
   const page = fs.readFileSync(path.join(root, 'src/page.html'), 'utf8');
-  const parser = fs.readFileSync(path.join(root, 'src/parser.js'), 'utf8');
+  const parser = fs.readFileSync(path.join(root, 'src/parser.js'), 'utf8') + '\n' + fs.readFileSync(path.join(root, 'src/gst.js'), 'utf8');
   const runtime = fs.readFileSync(path.join(root, 'src/local-runtime.js'), 'utf8');
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Books"><meta name="theme-color" content="#0E5C4E">
@@ -118,6 +120,30 @@ function createApp({ cfg, store, ledger, gmail, llm, files, syncer, bot }) {
         if (!f || !fs.existsSync(f.file)) return fail(res, 404, 'File not found');
         res.writeHead(200, { 'Content-Type': f.meta.type, 'Content-Disposition': `inline; filename="${f.meta.name.replace(/["\\\r\n]/g, '_')}"`, 'X-Content-Type-Options': 'nosniff' });
         return fs.createReadStream(f.file).pipe(res);
+      }
+      if (p === '/api/export' && req.method === 'GET') {
+        const q = url.searchParams;
+        const per = q.get('preset') ? period(q.get('preset')) : { from: q.get('from'), to: q.get('to'), label: '' };
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(per.from || '') || !/^\d{4}-\d{2}-\d{2}$/.test(per.to || '') || per.from > per.to) return fail(res, 400, 'Choose a valid period.');
+        const pack = buildPack({ ledger, store, files }, { entity: q.get('entity') || 'all', ...per });
+        if (q.get('send') === 'telegram') {
+          if (!bot) return fail(res, 400, 'Telegram is not set up.');
+          await bot.tg.sendDocument(pack.buffer, pack.name, `📦 CA pack: ${per.label || per.from + ' to ' + per.to}`);
+          return send(res, 200, { sent: true, name: pack.name, counts: pack.counts });
+        }
+        res.writeHead(200, { 'Content-Type': 'application/zip', 'Content-Disposition': `attachment; filename="${pack.name}"`, 'Cache-Control': 'no-store' });
+        return res.end(pack.buffer);
+      }
+      if (p === '/api/invoice/read' && req.method === 'POST') {
+        const { txnId } = JSON.parse((await readBody(req, 64 * 1024)).toString('utf8') || '{}');
+        try { return send(res, 200, { gst: await readInvoice({ ledger, files, llm, gmail }, txnId) }); }
+        catch (e) { return fail(res, 400, e.message); }
+      }
+      if (p === '/api/invoice/fetch' && req.method === 'POST') {
+        const { txnId, id } = JSON.parse((await readBody(req, 64 * 1024)).toString('utf8') || '{}');
+        if (!gmail || !gmail.configured()) return fail(res, 400, 'Gmail is not set up.');
+        try { return send(res, 200, { saved: await fetchEmailAttachments({ ledger, files, gmail }, txnId, id) }); }
+        catch (e) { return fail(res, 400, e.message); }
       }
       if (p === '/api/statement/pdf' && req.method === 'POST') {
         if (!llm || !llm.enabled() || !cfg.llm.pdf) return fail(res, 400, 'Reading PDF statements needs OpenRouter (and LLM_PDF not set to 0). Use the Excel/CSV statement instead.');

@@ -34,11 +34,50 @@ During `npm run setup` you will:
   - If there's an AI suggestion, tap **✓** to accept it.
   - Reply to the message with a **photo or PDF** to attach the bill, or tap **Find in email** to search your inbox for it.
   - Reply with **text** to add a note.
-- Commands: `/todo` shows what's waiting, `/summary` shows this month per company, `/sync` checks Gmail now.
+- Commands: `/todo` shows what's waiting, `/summary` shows this month per company, `/export` sends the CA pack, `/sync` checks Gmail now.
 - Every morning (09:00 by default) you get yesterday's summary. On the 2nd–7th of each month it also reminds you to import last month's statements.
 - The **dashboard** (http://localhost:8787) shows totals, bank balances, cash flow, spending by category, the ledger, statement import, and CSV export for your CA.
 
 Books checks Gmail every 15 minutes while the computer is awake. Alerts that arrive while it's off are picked up at the next check.
+
+## Exports for your CA
+
+Under **Export** in the dashboard, or by sending `/export` to the Telegram bot, choose a company and a period (last month, last quarter, this or last financial year, or your own dates). You get one ZIP:
+
+```
+Books CodeCrust + AITA 2026-07-01 to 2026-09-30.zip
+  README.txt
+  CodeCrust/
+    CodeCrust books 2026-07-01 to 2026-09-30.xlsx
+    Bank book 2026-07-01 to 2026-09-30.csv
+    Invoices/2026-08-12_Cloud-Host-India-Pvt-Ltd_2360.pdf ...
+  AITA Technologies/
+    ...
+```
+
+The workbook has six sheets:
+
+| Sheet | Contents |
+|---|---|
+| **Summary** | Company name and GSTIN, opening and closing balances (from imported statements), totals, expenses by category with GST |
+| **Bank book** | Every transaction: date, account, party, money out/in, balance, type, category, note, reference, bank narration, documents, statement check |
+| **Expenses** | Purchase register: date paid, vendor, vendor GSTIN and state, invoice no. and date, taxable value, CGST, SGST, IGST, invoice total, amount paid, difference, invoice file, checks |
+| **Income** | Receipts, with export-of-services marked, and the bank advice / FIRC where attached |
+| **Inter-company & personal** | Transfers between CodeCrust and AITA, own transfers, personal spends from company accounts |
+| **To check** | Anything incomplete: missing invoices, unlabelled payments, GST problems, alerts not on the statement, months without a statement |
+
+**GST details** (vendor, GSTIN, invoice number and date, taxable value, CGST/SGST/IGST, total) are filled in like this:
+1. When a bill is attached on a business expense, the AI reads it: PDF text, or a photo if your OpenRouter model reads images.
+2. You can type or correct the details on the transaction in the dashboard.
+3. Every invoice is then checked mechanically:
+   - the GSTIN check digit
+   - that taxable value plus GST equals the total
+   - CGST plus SGST for a vendor in your own state, IGST for one in another state (needs your company GSTINs, added under Setup → Companies)
+   - that the invoice total matches the amount paid
+
+   Anything that fails a check is listed on **To check**.
+
+For export receipts, **Find in email** searches for HDFC's inward remittance advice (FIRC) emails around the payment date.
 
 ## Statements
 
@@ -56,6 +95,7 @@ Reconciling matches each statement row to an alert, adds rows that had no alert 
 | Read an alert email the fixed parser doesn't recognise | The email text, with links, long account numbers and email addresses removed | Amount and account digits must appear in the email; marked "Read by AI" for review |
 | Read a PDF statement | The statement text | Balance chain check on every row |
 | Rank invoice emails for a payment | Payee, amount, date; candidate subjects, senders, short snippets | You pick which one to attach |
+| Read an attached invoice (vendor, GSTIN, invoice no., tax split) | The invoice PDF text, or the photo | GSTIN check digit, GSTIN present in the PDF text, tax arithmetic, state rule, total vs payment |
 
 `LLM_DAILY_LIMIT` caps calls per day (default 200). `LLM_PDF=0` stops statement text from being sent.
 
@@ -80,6 +120,8 @@ Telegram receives the messages it shows you (amounts, payee names). OpenRouter r
 | `local/gmail.js` | Gmail over IMAP (read-only) |
 | `local/telegram.js`, `local/bot.js` | Telegram client and bot behaviour |
 | `local/llm.js`, `local/pdf.js` | OpenRouter jobs and PDF statements |
+| `src/gst.js`, `local/invoices.js` | GSTIN and tax checks; reading invoice details |
+| `local/export.js`, `local/xlsx.js` | CA pack: Excel workbook, CSV and ZIP (no extra libraries) |
 | `local/setup.js`, `local/service.js` | Setup wizard and start-at-login installer |
 
 ```

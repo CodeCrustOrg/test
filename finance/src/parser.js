@@ -352,6 +352,7 @@
     const rupees = (t.paise / 100);
     const amt = Number.isInteger(rupees) ? String(rupees) : rupees.toFixed(2);
     const words = '(invoice OR receipt OR bill OR "order confirmation" OR "payment successful" OR "tax invoice")';
+    if (t.dir === 'in' && t.cat === 'Export revenue (foreign)' && mode !== 'party') return `(from:inward.remittances OR FIRC OR "inward remittance") after:${after} before:${before}`;
     if (mode === 'party' && t.party) {
       const name = t.party.replace(/[^A-Za-z0-9 ]+/g, ' ').trim().split(/\s+/).slice(0, 3).join(' ');
       return `${words} ${name} after:${after} before:${before}`;

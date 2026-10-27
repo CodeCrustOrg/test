@@ -30,7 +30,7 @@ class LLM {
       headers: { Authorization: `Bearer ${this.cfg.key}`, 'Content-Type': 'application/json', 'X-Title': 'Books' },
       body: JSON.stringify({
         model: this.cfg.model, temperature: 0,
-        messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
+        messages: [{ role: 'system', content: system }, { role: 'user', content: user }], // user: string, or content parts for images
         response_format: { type: 'json_schema', json_schema: { name, strict: true, schema } },
       }),
     });
@@ -113,6 +113,21 @@ class LLM {
       'These are text lines from one page of an Indian bank account statement, columns separated by " | ". Return every transaction row in order. Copy amounts exactly as printed, empty string when a column is blank. Use the transaction date (not value date) exactly as printed. Join narration text that wraps onto the next line. Skip headers, opening/closing balance lines, totals and footers.',
       lines.join('\n'));
     return o.rows || [];
+  }
+
+  // Read an invoice or bill: from PDF text, or from an image (needs a vision-capable model).
+  async extractInvoice({ text, image, mime }) {
+    const str = { type: 'string' };
+    const schema = {
+      type: 'object', additionalProperties: false,
+      required: ['is_invoice', 'vendor', 'gstin', 'invoice_number', 'invoice_date', 'taxable_value', 'cgst', 'sgst', 'igst', 'total', 'currency'],
+      properties: { is_invoice: { type: 'boolean' }, vendor: str, gstin: str, invoice_number: str, invoice_date: str, taxable_value: str, cgst: str, sgst: str, igst: str, total: str, currency: str },
+    };
+    const system = 'Extract the details of this invoice, bill or receipt issued to an Indian company. gstin is the SELLER\'s 15-character GSTIN (not the buyer\'s). Copy numbers exactly as printed, without currency symbols. invoice_date as YYYY-MM-DD. Use empty strings for anything not printed. currency as a 3-letter code (INR if rupees). If this is not an invoice, bill or receipt, set is_invoice to false.';
+    const user = image
+      ? [{ type: 'text', text: 'The invoice is in this image.' }, { type: 'image_url', image_url: { url: `data:${mime};base64,${image}` } }]
+      : String(text).slice(0, 12000);
+    return this.json('invoice', schema, system, user);
   }
 
   // Rank candidate emails for a payment. Returns indexes, best first.

@@ -38,11 +38,23 @@ class Telegram {
     return { buf: Buffer.from(await res.arrayBuffer()), path: f.file_path };
   }
 
+  async sendDocument(buf, filename, caption) {
+    const form = new FormData();
+    form.append('chat_id', this.chatId);
+    if (caption) { form.append('caption', caption); form.append('parse_mode', 'HTML'); }
+    form.append('document', new Blob([buf]), filename);
+    const res = await this.fetch(`https://api.telegram.org/bot${this.token}/sendDocument`, { method: 'POST', body: form });
+    const data = await res.json().catch(() => ({ ok: false, description: `HTTP ${res.status}` }));
+    if (!data.ok) throw new Error(`Telegram sendDocument: ${data.description || res.status}`);
+    return data.result;
+  }
+
   setCommands() {
     return this.api('setMyCommands', { commands: [
       { command: 'todo', description: 'Show transactions waiting for you' },
       { command: 'summary', description: 'This month so far, per company' },
       { command: 'sync', description: 'Check Gmail now' },
+      { command: 'export', description: 'Excel + invoices pack for your CA' },
       { command: 'help', description: 'How this bot works' },
     ] });
   }

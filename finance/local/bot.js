@@ -2,6 +2,9 @@
 // Each bot message about a transaction is remembered as tg/<message_id> -> {txn}.
 const P = require('../src/parser.js');
 const { ENTITIES, KINDS } = require('./ledger.js');
+const { buildPack, period } = require('./export.js');
+const { readInvoice } = require('./invoices.js');
+const G = require('../src/gst.js');
 
 const esc = s => String(s == null ? '' : s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -30,9 +33,19 @@ class Bot {
     return `\n✅ ${esc(KINDS[t.kind][t.dir])}${t.kind === 'business' && t.cat ? ' · ' + esc(t.cat) : ''}${t.auto ? ' (your rule)' : ''}`;
   }
 
+  gstLine(t) {
+    const g = t.gst; if (!g) return '';
+    const tax = (g.cgst || 0) + (g.sgst || 0) + (g.igst || 0);
+    const chk = G.checkInvoice(g, t.paise, ((this.store.get('meta/settings') || {}).companies || {})[this.ledger.entityOf(t)]?.gstin);
+    const issues = chk.issues.concat(g.flags || []);
+    return `\n🧾 ${esc(g.vendor || '')}${g.gstin ? ' · ' + esc(g.gstin) : ' · no GSTIN'}${g.invNo ? ' · Inv ' + esc(g.invNo) : ''}` +
+      (g.total != null ? `\n   ${g.taxable != null ? P.fmtINR(Math.round(g.taxable * 100)) + ' + GST ' + P.fmtINR(Math.round(tax * 100)) + ' = ' : ''}${P.fmtINR(Math.round(g.total * 100))}` : '') +
+      (issues.length ? `\n⚠️ ${esc(issues.join('; '))}` : '');
+  }
+
   invoiceLine(t) {
     const inv = t.inv || {};
-    if (inv.state === 'attached') return `\n📎 Invoice attached`;
+    if (inv.state === 'attached') return `\n📎 Invoice attached` + this.gstLine(t);
     if (inv.state === 'not_needed') return '';
     if (this.ledger.needsInvoice(t)) return `\n🧾 Invoice needed. Reply to this message with a photo or PDF, or find it in your email.`;
     return '';
@@ -133,6 +146,17 @@ class Bot {
     const [act, arg] = String(q.data || '').split('|');
     if (!ctx) { await this.tg.answer(q.id, 'This message is too old. Use /todo or the dashboard.'); return; }
     try {
+      if (ctx.export) {
+        if (act === 'p') { this.store.update('tg/' + mid, { export: { preset: arg } }); await this.tg.answer(q.id); return this.tg.edit(mid, `📦 CA pack for <b>${esc(period(arg).label)}</b>. Which company?`, [[{ text: 'CodeCrust', callback_data: 'q|codecrust' }, { text: 'AITA', callback_data: 'q|aita' }, { text: 'Both', callback_data: 'q|all' }]]); }
+        if (act === 'q') {
+          await this.tg.answer(q.id, 'Preparing…');
+          const per = period(ctx.export.preset);
+          const pack = buildPack({ ledger: this.ledger, store: this.store, files: this.files }, { entity: arg, ...per });
+          const c = Object.values(pack.counts).reduce((a, x) => ({ txns: a.txns + x.txns, issues: a.issues + x.issues, invoices: a.invoices + x.invoices }), { txns: 0, issues: 0, invoices: 0 });
+          await this.tg.edit(mid, `📦 CA pack for <b>${esc(per.label)}</b>: ${c.txns} transactions, ${c.invoices} invoice files${c.issues ? `, <b>${c.issues}</b> items in "To check"` : ''}. Forward the file below to your CA.`, []);
+          return this.tg.sendDocument(pack.buffer, pack.name);
+        }
+      }
       if (act === 'e') {
         this.store.update('accounts/' + ctx.acct, { entity: arg }); this.ledger.pairInterCompany();
         await this.tg.answer(q.id, 'Saved');
@@ -186,7 +210,16 @@ class Bot {
       try { const buf = await this.gmail.attachment(c.uid, f.part); const meta = this.files.save(buf, f.filename, f.type); this.ledger.attachInvoice(t.id, { type: 'file', id: meta.id, name: meta.name }); extra = `\n📄 Saved ${esc(f.filename)}`; }
       catch (e) { extra = `\n⚠️ Linked the email but couldn't save its attachment: ${esc(e.message)}`; }
     }
-    return this.refresh(mid, this.ledger.txn(t.id), extra);
+    return this.refresh(mid, await this.autoRead(t.id), extra);
+  }
+
+  // After a bill is attached, read vendor/GSTIN/tax with the AI (if set up). Failures are shown, not fatal.
+  async autoRead(id) {
+    const t = this.ledger.txn(id);
+    if (!this.llm || !this.llm.enabled() || t.dir !== 'out' || t.kind !== 'business') return t;
+    try { await readInvoice({ ledger: this.ledger, files: this.files, llm: this.llm, gmail: this.gmail }, id); }
+    catch (e) { this.log.warn('invoice read failed', e.message); }
+    return this.ledger.txn(id);
   }
 
   async onMessage(m) {
@@ -200,7 +233,7 @@ class Bot {
         const { buf } = await this.tg.download(f.id);
         const meta = this.files.save(buf, f.name, f.type);
         this.ledger.attachInvoice(t.id, { type: 'file', id: meta.id, name: meta.name });
-        await this.refresh(m.reply_to_message.message_id, this.ledger.txn(t.id));
+        await this.refresh(m.reply_to_message.message_id, await this.autoRead(t.id));
         return this.tg.send(`📎 Attached to ${money(t)} ${esc(t.party || '')}`);
       } catch (e) { return this.tg.send('Could not attach: ' + esc(e.message)); }
     }
@@ -211,6 +244,12 @@ class Bot {
     }
     const cmd = text.split(/[\s@]/)[0].toLowerCase();
     if (cmd === '/todo') return this.sendTodo();
+    if (cmd === '/export') {
+      const m2 = await this.tg.send('📦 Export for your CA: Excel (bank book, expenses with GST, income, inter-company, items to check) plus all invoice files. Which period?',
+        [[{ text: 'Last month', callback_data: 'p|last-month' }, { text: 'Last quarter', callback_data: 'p|last-quarter' }], [{ text: 'This FY so far', callback_data: 'p|this-fy' }, { text: 'Last FY', callback_data: 'p|last-fy' }]]);
+      this.store.set('tg/' + m2.message_id, { export: {} });
+      return m2;
+    }
     if (cmd === '/summary') { const ist = new Date(Date.now() + 330 * 60000).toISOString(); return this.tg.send(this.summaryText(ist.slice(0, 7), `${MON[+ist.slice(5, 7) - 1]} ${ist.slice(0, 4)} so far`)); }
     if (cmd === '/sync') {
       await this.tg.send('🔄 Checking Gmail…');
@@ -220,7 +259,7 @@ class Bot {
     return this.tg.send([
       '<b>Books</b> sends each new CodeCrust and AITA bank transaction here.',
       'Tap a button to say what it is. Reply to a transaction with a photo or PDF to attach the bill, or with text to add a note.',
-      '', '/todo: what is waiting', '/summary: this month so far', '/sync: check Gmail now',
+      '', '/todo: what is waiting', '/summary: this month so far', '/export: Excel and invoices for your CA', '/sync: check Gmail now',
       this.cfg.dashboardUrl ? `\nDashboard: ${esc(this.cfg.dashboardUrl)}` : '',
     ].join('\n'));
   }

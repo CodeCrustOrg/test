@@ -109,6 +109,9 @@ table.cov td:first-child, table.cov th:first-child { text-align: left; white-spa
 .res button { grid-row: 1 / span 2; grid-column: 2; align-self: center; }
 .qrow { display: flex; gap: 6px; flex-wrap: wrap; }
 .qrow input { flex: 1 1 260px; font-family: var(--f-num); font-size: 12px; }
+.gst summary { cursor: pointer; font-size: 13px; font-weight: 600; }
+.gstgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin-top: 8px; }
+.gstgrid input { width: 100%; }
 .suggest { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; font-size: 13px; background: var(--accent-soft); border-radius: 8px; padding: 6px 10px; }
 .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .err { color: var(--crit); font-size: 13px; }
@@ -169,7 +172,7 @@ const KINDS = {
   transfer: { out: 'Own transfer', in: 'Own transfer' },
   personal: { out: 'Personal', in: 'Personal' },
 };
-const VIEWS = [['dashboard', 'Dashboard'], ['review', 'To do'], ['ledger', 'Ledger'], ['statements', 'Statements'], ['setup', 'Setup']];
+const VIEWS = [['dashboard', 'Dashboard'], ['review', 'To do'], ['ledger', 'Ledger'], ['statements', 'Statements'], ['export', 'Export'], ['setup', 'Setup']];
 
 const S = {
   db: null, mcp: null, assets: null, dl: null, dbState: 'loading',
@@ -233,6 +236,7 @@ function render() {
   else if (S.view === 'ledger') html += viewLedger();
   else if (S.view === 'dashboard') html += viewDashboard();
   else if (S.view === 'statements') html += viewStatements();
+  else if (S.view === 'export') html += viewExport();
   else html += viewSetup();
   $('#main').innerHTML = html;
   if (S.view === 'dashboard') wireCharts();
@@ -303,7 +307,7 @@ function viewReview() {
 }
 
 function draftFor(t) {
-  if (!S.draft[t.id]) S.draft[t.id] = { kind: t.kind || null, cat: t.cat || '', note: t.note || '', remember: false };
+  if (!S.draft[t.id]) S.draft[t.id] = { kind: t.kind || null, cat: t.cat || '', note: t.note || '', remember: false, gst: t.gst ? { ...t.gst } : null, gstDirty: false };
   return S.draft[t.id];
 }
 
@@ -369,7 +373,21 @@ function invoiceBlock(t, d) {
       <button data-act="inv-find" data-id="${esc(t.id)}" ${S.mcp ? '' : 'disabled'}>Find in Gmail</button>
       ${S.assets ? `<label class="btn" for="up-${esc(t.id)}">Upload</label><input type="file" id="up-${esc(t.id)}" data-field="upload" data-id="${esc(t.id)}" accept="application/pdf,image/png,image/jpeg,image/webp" hidden>` : ''}
       ${need && inv.state !== 'not_needed' && !(inv.items || []).length ? `<button class="ghost" data-act="inv-none" data-id="${esc(t.id)}">Not needed</button>` : ''}
-    </div>${items}${res}</div>`;
+    </div>${items}${need && (inv.items || []).length ? gstBlock(t, d) : ''}${res}</div>`;
+}
+
+const GST_FIELDS = [['vendor', 'Vendor', 'text'], ['gstin', 'Vendor GSTIN', 'text'], ['invNo', 'Invoice no.', 'text'], ['invDate', 'Invoice date', 'date'], ['taxable', 'Taxable value', 'number'], ['cgst', 'CGST', 'number'], ['sgst', 'SGST', 'number'], ['igst', 'IGST', 'number'], ['total', 'Invoice total', 'number']];
+function gstBlock(t, d) {
+  const cur = d.gstDirty ? d.gst : (t.gst || d.gst);
+  const g = cur || {};
+  const own = ((S.settings.companies || {})[entityOf(t)] || {}).gstin;
+  const chk = window.GST && (cur ? GST.checkInvoice(g, t.paise, own) : null);
+  const issues = chk ? chk.issues.concat(g.flags || []) : [];
+  const busy = S.busy['read-' + t.id];
+  return `<details class="gst" open><summary>GST details for your CA${g.source === 'ai' ? ' <span class="tag">Read by AI</span>' : ''}${cur ? (issues.length ? ' <span class="tag warn">Check</span>' : ' <span class="tag good">Checks pass</span>') : ''}</summary>
+    <div class="gstgrid">${GST_FIELDS.map(([k, l, type]) => `<label class="small">${l}<input id="gst-${k}-${esc(t.id)}" data-field="gst" data-k="${k}" data-id="${esc(t.id)}" type="${type === 'number' ? 'text' : type}" ${type === 'number' ? 'inputmode="decimal"' : ''} value="${esc(g[k] == null ? '' : g[k])}"></label>`).join('')}</div>
+    ${issues.length ? `<p class="small err">${issues.map(esc).join(' · ')}</p>` : ''}
+    <div class="actions">${window.BOOKS_LOCAL ? `<button data-act="inv-read" data-id="${esc(t.id)}" ${busy ? 'disabled' : ''}>${busy ? 'Reading…' : 'Read from invoice'}</button>` : ''}<span class="small muted">Saved with the transaction when you press ${t.status === 'done' ? 'Update' : 'Save'}.</span></div></details>`;
 }
 
 // ---------- ledger ----------
@@ -667,6 +685,47 @@ function wireCharts() {
   });
 }
 
+// ---------- export ----------
+const PRESETS = [['last-month', 'Last month'], ['last-quarter', 'Last quarter'], ['this-quarter', 'This quarter so far'], ['this-fy', 'This financial year so far'], ['last-fy', 'Last financial year'], ['custom', 'Custom dates']];
+function viewExport() {
+  const e = S.exp = S.exp || { entity: S.entity === 'all' ? 'all' : S.entity, preset: 'last-month', from: '', to: '' };
+  if (!window.BOOKS_LOCAL) return `<div class="panel"><h2>Export for your CA</h2><p class="muted">The full CA pack (Excel workbook with GST registers plus every invoice file) is made by the local Books app on your computer. Here you can download the ledger as CSV from the Ledger tab.</p></div>`;
+  const c = reviewCounts();
+  return `<div class="panel"><h2>Export for your CA</h2>
+    <p class="small muted">A ZIP with one Excel workbook per company (Summary, Bank book, Expenses with vendor GSTIN and CGST/SGST/IGST, Income, Inter-company &amp; personal, To check), the bank book as CSV, and every invoice file named date_vendor_amount.</p>
+    <div class="toolbar">
+      <select id="ex-entity" data-field="ex-entity" aria-label="Company"><option value="all" ${e.entity === 'all' ? 'selected' : ''}>Both companies</option>${Object.entries(ENTITIES).map(([k, l]) => `<option value="${k}" ${e.entity === k ? 'selected' : ''}>${l}</option>`).join('')}</select>
+      <select id="ex-preset" data-field="ex-preset" aria-label="Period">${PRESETS.map(([k, l]) => `<option value="${k}" ${e.preset === k ? 'selected' : ''}>${l}</option>`).join('')}</select>
+      ${e.preset === 'custom' ? `<input type="date" id="ex-from" data-field="ex-from" value="${esc(e.from)}" aria-label="From"><input type="date" id="ex-to" data-field="ex-to" value="${esc(e.to)}" aria-label="To">` : ''}
+    </div>
+    ${c.label || c.invoice ? `<div class="status warn">${c.label} transaction${c.label === 1 ? '' : 's'} not labelled and ${c.invoice} invoice${c.invoice === 1 ? '' : 's'} missing. They are listed on the "To check" sheet; clearing them first makes the pack complete.</div>` : ''}
+    <div class="actions"><button class="primary" data-act="export-dl">Download ZIP</button><button data-act="export-tg">Send to my Telegram</button>${S.exp.msg ? `<span class="small">${S.exp.msg}</span>` : ''}</div>
+  </div>`;
+}
+function exportQuery() {
+  const e = S.exp; const q = new URLSearchParams({ entity: e.entity });
+  if (e.preset === 'custom') { q.set('from', e.from); q.set('to', e.to); } else q.set('preset', e.preset);
+  return q;
+}
+async function runExport(toTelegram) {
+  const e = S.exp;
+  if (e.preset === 'custom' && (!e.from || !e.to)) { e.msg = 'Pick both dates.'; return schedule(); }
+  if (!toTelegram) { const a = document.createElement('a'); a.href = '/api/export?' + exportQuery(); document.body.appendChild(a); a.click(); a.remove(); e.msg = 'Download started.'; return schedule(); }
+  e.msg = 'Sending…'; schedule();
+  try { const r = await window.booksApi('GET', '/api/export?' + exportQuery() + '&send=telegram'); e.msg = `Sent ${esc(r.name)} to Telegram. Forward it to your CA from there.`; }
+  catch (err) { e.msg = `<span class="err">${esc(err.message)}</span>`; }
+  schedule();
+}
+
+async function readInvoiceDetails(id, quiet) {
+  S.busy['read-' + id] = true; S.busy['err-' + id] = null; schedule();
+  try {
+    const r = await window.booksApi('POST', '/api/invoice/read', { txnId: id });
+    const d = draftFor(S.txns.get(id)); d.gst = { ...r.gst }; d.gstDirty = false;
+  } catch (e) { if (!quiet) S.busy['err-' + id] = e.message; }
+  S.busy['read-' + id] = false; schedule();
+}
+
 // ---------- statements ----------
 function viewStatements() {
   const accts = [...S.accounts.values()].filter(a => ENTITIES[a.entity] && (S.entity === 'all' || a.entity === S.entity));
@@ -793,7 +852,12 @@ async function reconcile() {
 function viewSetup() {
   const accts = [...S.accounts.values()].sort((a, b) => a.id.localeCompare(b.id));
   const rules = [...S.rules.values()];
-  return `<div class="panel"><h3>Bank accounts</h3><p class="small muted">Picked up automatically from alert emails. Choose which company each one belongs to; untracked accounts are ignored on future syncs.</p>
+  const cos = S.coDraft || S.settings.companies || {};
+  const coPanel = `<div class="panel"><h3>Companies</h3><p class="small muted">Used on exports for your CA, and to check whether a vendor should charge CGST + SGST (same state) or IGST.</p>
+    <div class="tablewrap"><table><thead><tr><th>Company</th><th>Legal name</th><th>GSTIN</th></tr></thead><tbody>${Object.entries(ENTITIES).map(([k, l]) => { const c = cos[k] || {}; const bad = c.gstin && window.GST && !GST.gstinValid(c.gstin);
+      return `<tr><td>${l}</td><td><input id="co-${k}-name" data-field="co" data-k="${k}.legalName" value="${esc(c.legalName || '')}" placeholder="${esc(l)} Private Limited"></td><td><input id="co-${k}-gstin" data-field="co" data-k="${k}.gstin" value="${esc(c.gstin || '')}" placeholder="15 characters" maxlength="15">${bad ? '<div class="err small">Check digit fails: please re-check</div>' : ''}</td></tr>`; }).join('')}</tbody></table></div>
+    <div class="actions"><button data-act="save-cos">Save company details</button></div></div>`;
+  return coPanel + `<div class="panel"><h3>Bank accounts</h3><p class="small muted">Picked up automatically from alert emails. Choose which company each one belongs to; untracked accounts are ignored on future syncs.</p>
     ${accts.length ? `<div class="tablewrap"><table><thead><tr><th>Account</th><th>Belongs to</th><th class="r">Transactions</th></tr></thead><tbody>${accts.map(a => `<tr><td>${esc(acctName(a.id))}</td>
       <td><select id="acct-${esc(a.id)}" data-field="acct-entity" data-acct="${esc(a.id)}" aria-label="Owner of ${esc(acctName(a.id))}"><option value="">Choose…</option>${Object.entries(ENTITIES).map(([k, l]) => `<option value="${k}" ${a.entity === k ? 'selected' : ''}>${l}</option>`).join('')}<option value="ignore" ${a.entity === 'ignore' ? 'selected' : ''}>Don't track</option></select></td>
       <td class="r num">${[...S.txns.values()].filter(t => t.acct === a.id).length}</td></tr>`).join('')}</tbody></table></div>` : '<p class="muted">None yet. Run a sync.</p>'}</div>
@@ -941,6 +1005,12 @@ async function saveTxn(id) {
   S.busy[id] = true; schedule();
   try {
     const patch = { kind: d.kind, cat: d.kind === 'business' ? d.cat : null, note: d.note.trim(), status: 'done', auto: false, updated: Date.now() };
+    if (d.gstDirty && d.gst) {
+      const g = { ...d.gst, source: 'manual', flags: [], at: Date.now() };
+      for (const k of ['taxable', 'cgst', 'sgst', 'igst', 'total']) { const v = P.toPaise(g[k]); g[k] = v == null ? null : v / 100; }
+      g.gstin = String(g.gstin || '').toUpperCase().replace(/\s/g, '');
+      patch.gst = g;
+    }
     if (d.kind !== 'business' && (!t.inv || t.inv.state === 'missing')) patch.inv = { state: 'not_needed', items: [] };
     if (d.kind === 'business' && t.inv && t.inv.state === 'not_needed' && !(t.inv.items || []).length && t.dir === 'out' && t.kind !== 'business') patch.inv = { state: 'missing', items: [] };
     await updDoc('txns/' + id, patch);
@@ -1010,10 +1080,17 @@ document.addEventListener('click', async ev => {
   if (act === 'inv-find') { const t = S.txns.get(id); const st = S.inv[id] = S.inv[id] || { mode: 'amount' }; st.open = true; st.q = P.invoiceQuery(t, st.mode); return invSearch(id); }
   if (act === 'inv-mode') { const t = S.txns.get(id); const st = S.inv[id]; st.mode = st.mode === 'party' ? 'amount' : 'party'; st.q = P.invoiceQuery(t, st.mode); return invSearch(id); }
   if (act === 'inv-search') return invSearch(id);
+  if (act === 'inv-read') return readInvoiceDetails(id);
+  if (act === 'export-dl' || act === 'export-tg') return runExport(act === 'export-tg');
   if (act === 'inv-attach') {
     const t = S.txns.get(id); const r = S.inv[id].results[+v]; const inv = t.inv || { items: [] };
     if (!(inv.items || []).some(i => i.id === r.id)) await setInv(id, { state: 'attached', items: (inv.items || []).concat([{ type: 'gmail', id: r.id, url: r.url, subject: r.subject || '', from: r.from || '', date: r.date || '' }]) });
-    S.inv[id].open = false; return schedule();
+    S.inv[id].open = false; schedule();
+    if (window.BOOKS_LOCAL) {
+      try { await window.booksApi('POST', '/api/invoice/fetch', { txnId: id, id: r.id }); } catch (e) { S.busy['err-' + id] = 'Linked the email, but its attachment was not saved: ' + e.message; }
+      if (t.dir === 'out') readInvoiceDetails(id, true);
+    }
+    return;
   }
   if (act === 'inv-none') return setInv(id, { state: 'not_needed', items: [] });
   if (act === 'inv-remove') { const t = S.txns.get(id); const items = (t.inv.items || []).filter((_, i) => i !== +v); return setInv(id, { state: items.length ? 'attached' : 'missing', items }); }
@@ -1022,6 +1099,11 @@ document.addEventListener('click', async ev => {
   if (act === 'pdf-read') return readPdfStatement();
   if (act === 'st-clear') { Object.assign(S.stmt, { rows: null, map: null, parsed: null, pdf: null, pdfFile: null, error: null, result: null }); const f = $('#st-file'); if (f) f.value = ''; return schedule(); }
   if (act === 'rule-del') { await write(() => S.db.doc('rules/' + id).delete()); return; }
+  if (act === 'save-cos') {
+    const cos = S.coDraft || S.settings.companies || {};
+    for (const c of Object.values(cos)) if (c.gstin) c.gstin = c.gstin.toUpperCase().replace(/\s/g, '');
+    await setDoc('meta/settings', { ...S.settings, companies: cos }); S.coDraft = null; return flash('info', 'Company details saved.');
+  }
   if (act === 'save-cats') {
     const read = sel => ($(sel).value || '').split('\n').map(s => s.trim()).filter(Boolean);
     await setDoc('meta/settings', { ...S.settings, catsOut: read('#cats-out'), catsIn: read('#cats-in') }); return flash('info', 'Categories saved.');
@@ -1035,6 +1117,8 @@ document.addEventListener('input', ev => {
   const el = ev.target; const f = el.dataset.field; const id = el.dataset.id; if (!f) return;
   if (f === 'note') draftFor(S.txns.get(id)).note = el.value;
   else if (f === 'invq') S.inv[id].q = el.value;
+  else if (f === 'gst') { const t = S.txns.get(id); const d = draftFor(t); if (!d.gstDirty) d.gst = { ...(t.gst || {}) }; d.gst[el.dataset.k] = el.value; d.gstDirty = true; }
+  else if (f === 'co') { S.coDraft = S.coDraft || JSON.parse(JSON.stringify(S.settings.companies || {})); const [e, k] = el.dataset.k.split('.'); (S.coDraft[e] = S.coDraft[e] || {})[k] = el.value; }
   else if (f === 'lg-q') { S.ledger.q = el.value; schedule(); }
 });
 document.addEventListener('change', async ev => {
@@ -1049,6 +1133,7 @@ document.addEventListener('change', async ev => {
   else if (f === 'st-file') { if (el.files[0]) loadStatementFile(el.files[0]); }
   else if (f === 'map') { S.stmt.map[el.dataset.v] = +el.value; S.stmt.parsed = P.statementRows(S.stmt.rows, S.stmt.map); schedule(); }
   else if (f === 'acct-entity') await assignAccount(el.dataset.acct, el.value || null);
+  else if (f === 'ex-entity' || f === 'ex-preset' || f === 'ex-from' || f === 'ex-to') { S.exp = S.exp || {}; S.exp[f.slice(3)] = el.value; schedule(); }
   else if (f === 'since') await setDoc('meta/settings', { ...S.settings, since: el.value || DEFAULT_SINCE });
 });
 

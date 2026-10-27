@@ -94,6 +94,21 @@ class Gmail {
     });
   }
 
+  // PDF/image attachments of one message, found by its Gmail id (hex, as stored on invoices).
+  async attachmentsById(hexId, maxBytes = 15 * 1024 * 1024) {
+    return this.withClient(async client => {
+      const uids = await client.search({ emailId: BigInt('0x' + hexId).toString() }, { uid: true }) || [];
+      if (!uids.length) return [];
+      const [h] = await this.headers(client, [uids[0]]);
+      const out = [];
+      for (const f of h.parts.files.filter(x => /pdf|image\//i.test(x.type) && (!x.size || x.size < maxBytes)).slice(0, 3)) {
+        const { content } = await client.download(String(h.uid), f.part, { uid: true });
+        if (content) out.push({ filename: f.filename, type: f.type, buf: await readStream(content, maxBytes) });
+      }
+      return out;
+    });
+  }
+
   // Quick check used by setup: can we log in, and how many alert emails exist?
   async check(since) {
     return this.withClient(async client => {

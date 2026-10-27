@@ -200,3 +200,115 @@ test('telegram: new txn -> business -> category -> find invoice -> attach; reply
   await bot.digest(new Date('2026-10-27T03:30:00Z'));
   assert.match(tg.sent[tg.sent.length - 1].text, /Yesterday, 26 Oct: 1 transaction/);
 });
+
+// ---------- GST, invoices, CA export ----------
+const G = require('../src/gst.js');
+const { buildPack, period } = require('../local/export.js');
+const { readInvoice } = require('../local/invoices.js');
+const zlib = require('zlib');
+
+// Tiny unzip for tests: name -> Buffer
+function unzip(buf) {
+  const out = {}; let i = 0;
+  while (buf.readUInt32LE(i) === 0x04034b50) {
+    const method = buf.readUInt16LE(i + 8), size = buf.readUInt32LE(i + 18), nlen = buf.readUInt16LE(i + 26), xlen = buf.readUInt16LE(i + 28);
+    const name = buf.slice(i + 30, i + 30 + nlen).toString('utf8'); const start = i + 30 + nlen + xlen;
+    const body = buf.slice(start, start + size);
+    out[name] = method === 8 ? zlib.inflateRawSync(body) : body; i = start + size;
+  }
+  return out;
+}
+
+test('gst: GSTIN check digit, arithmetic, state rules, payment match', () => {
+  assert.equal(G.gstinValid('27AAPFU0939F1ZV'), true);
+  assert.equal(G.gstinValid('27AAPFU0939F1ZW'), false);
+  assert.equal(G.gstinValid('99AAPFU0939F1ZV'), false, 'unknown state code');
+  assert.deepEqual(G.findGstins('Seller GSTIN: 27AAPFU0939F1ZV Buyer 29AAGCB7383J1Z4 bad 27AAPFU0939F1ZW'), ['27AAPFU0939F1ZV', '29AAGCB7383J1Z4']);
+  const ok = G.checkInvoice({ gstin: '29AAGCB7383J1Z4', taxable: 1000, cgst: 90, sgst: 90, total: 1180 }, 118000, '29AAGCB7383J1Z4');
+  assert.deepEqual(ok.issues, []); assert.equal(ok.tax, 180);
+  const bad = G.checkInvoice({ gstin: '27AAPFU0939F1ZV', taxable: 1000, igst: 0, cgst: 90, sgst: 90, total: 1200 }, 100000, '29AAGCB7383J1Z4');
+  assert.equal(bad.issues.length, 3, bad.issues.join(' | ')); // sum, wrong tax type, payment mismatch
+});
+
+test('period presets follow the Indian financial year', () => {
+  assert.deepEqual(period('last-quarter', '2026-04-02'), { from: '2026-01-01', to: '2026-03-31', label: 'Q4 FY 2025-26' });
+  assert.deepEqual(period('last-month', '2026-01-15'), { from: '2025-12-01', to: '2025-12-31', label: 'Dec 2025' });
+  assert.equal(period('this-fy', '2026-10-27').from, '2026-04-01');
+});
+
+test('invoice reading: AI fields checked against the PDF text', async () => {
+  const { store, ledger } = setup();
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'books-'));
+  const files = new Files(dir, store);
+  ledger.ingest([P.parseAlert(MAILS[0])]);
+  const t = ledger.txns()[0];
+  ledger.label(t.id, { kind: 'business', cat: 'Software & subscriptions' });
+  // a real one-page PDF with text
+  const lines = ['TAX INVOICE', 'Grocer Co Pvt Ltd  GSTIN: 27AAPFU0939F1ZV', 'Invoice No: GC-1042  Date: 26-10-2026', 'Taxable 347.46  CGST 31.27  SGST 31.27  Total 410.00'];
+  const content = 'BT /F1 10 Tf ' + lines.map((l, i) => `1 0 0 1 40 ${780 - i * 16} Tm (${l}) Tj`).join(' ') + ' ET';
+  const objs = ['<< /Type /Catalog /Pages 2 0 R >>', '<< /Type /Pages /Kids [3 0 R] /Count 1 >>', '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>', `<< /Length ${content.length} >>\nstream\n${content}\nendstream`, '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>'];
+  let pdf = '%PDF-1.4\n'; const offs = []; objs.forEach((o, i) => { offs.push(pdf.length); pdf += `${i + 1} 0 obj\n${o}\nendobj\n`; });
+  const x = pdf.length; pdf += `xref\n0 ${objs.length + 1}\n0000000000 65535 f \n` + offs.map(o => String(o).padStart(10, '0') + ' 00000 n \n').join('') + `trailer\n<< /Size ${objs.length + 1} /Root 1 0 R >>\nstartxref\n${x}\n%%EOF`;
+  const meta = files.save(Buffer.from(pdf, 'latin1'), 'invoice.pdf', 'application/pdf');
+  ledger.attachInvoice(t.id, { type: 'file', id: meta.id, name: meta.name });
+  let seenText = '';
+  const llm = new LLM({ key: 'k', model: 'm', dailyLimit: 10 }, store, fakeFetch((url, body) => {
+    seenText = body.messages[1].content;
+    return orReply({ is_invoice: true, vendor: 'Grocer Co Pvt Ltd', gstin: '27AAPFU0939F1ZV', invoice_number: 'GC-1042', invoice_date: '2026-10-26', taxable_value: '347.46', cgst: '31.27', sgst: '31.27', igst: '', total: '410.00', currency: 'INR' });
+  }));
+  const g = await readInvoice({ ledger, files, llm }, t.id);
+  assert.match(seenText, /GC-1042/, 'PDF text was extracted and sent');
+  assert.deepEqual([g.gstin, g.invNo, g.invDate, g.taxable, g.cgst, g.total, g.flags.length], ['27AAPFU0939F1ZV', 'GC-1042', '2026-10-26', 347.46, 31.27, 410, 0]);
+  assert.deepEqual(G.checkInvoice(g, t.paise).issues, []);
+  // a misread GSTIN is flagged, not trusted
+  const llm2 = new LLM({ key: 'k', model: 'm', dailyLimit: 10 }, store, fakeFetch(() => orReply({ is_invoice: true, vendor: 'X', gstin: '27AAPFU0939F1ZW', invoice_number: '', invoice_date: '', taxable_value: '', cgst: '', sgst: '', igst: '', total: '410', currency: 'INR' })));
+  const g2 = await readInvoice({ ledger, files, llm: llm2 }, t.id);
+  assert.equal(g2.flags.length, 2);
+});
+
+test('CA pack: workbook per company, invoices renamed, issues listed', () => {
+  const { store, ledger } = setup();
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'books-'));
+  const files = new Files(dir, store);
+  store.set('meta/settings', { companies: { codecrust: { legalName: 'CodeCrust Private Limited', gstin: '29AAGCB7383J1Z4' } } });
+  ledger.ingest(MAILS.slice(0, 3).map(m => P.parseAlert(m)));
+  const g = ledger.txns().find(t => t.party === 'Grocer Co');
+  ledger.label(g.id, { kind: 'business', cat: 'Office supplies & equipment' });
+  const meta = files.save(Buffer.from('%PDF-1.4 x'), 'bill.pdf', 'application/pdf');
+  ledger.attachInvoice(g.id, { type: 'file', id: meta.id, name: meta.name });
+  store.update('txns/' + g.id, { gst: { vendor: 'Grocer Co Pvt Ltd', gstin: '27AAPFU0939F1ZV', invNo: 'GC-1042', invDate: '2026-10-26', taxable: 347.46, cgst: 31.27, sgst: 31.27, igst: null, total: 410, flags: [] } });
+  const pack = buildPack({ ledger, store, files }, { entity: 'all', from: '2026-10-01', to: '2026-10-31', label: 'Oct 2026' });
+  const z = unzip(pack.buffer);
+  const names = Object.keys(z);
+  assert.ok(names.includes('README.txt'));
+  assert.ok(names.includes('CodeCrust/CodeCrust books 2026-10-01 to 2026-10-31.xlsx'));
+  assert.ok(names.includes('AITA Technologies/AITA Technologies books 2026-10-01 to 2026-10-31.xlsx'));
+  assert.ok(names.includes('CodeCrust/Invoices/2026-10-26_Grocer-Co-Pvt-Ltd_410.pdf'), names.join('\n'));
+  const wb = unzip(z['CodeCrust/CodeCrust books 2026-10-01 to 2026-10-31.xlsx']);
+  const sheets = Object.keys(wb).filter(n => n.startsWith('xl/worksheets/')).map(n => wb[n].toString());
+  const all = sheets.join('');
+  assert.match(wb['xl/workbook.xml'].toString(), /name="Expenses"/);
+  assert.match(all, /GC-1042/);
+  assert.match(all, /CodeCrust Private Limited/);
+  // vendor in Maharashtra charging CGST+SGST to a Karnataka company -> flagged
+  assert.match(all, /expected IGST/);
+  assert.match(all, /Statement not imported/);
+  assert.ok(pack.counts.codecrust.issues >= 2);
+  assert.match(z['CodeCrust/Bank book 2026-10-01 to 2026-10-31.csv'].toString(), /2026-10-26,HDFC ••1234,Grocer Co,410.00/);
+});
+
+test('telegram /export sends the pack as a document', async () => {
+  const { store, ledger } = setup();
+  const files = new Files(fs.mkdtempSync(path.join(os.tmpdir(), 'books-')), store);
+  ledger.ingest(MAILS.slice(0, 3).map(m => P.parseAlert(m)));
+  const tg = fakeTelegram(); const docs = [];
+  tg.sendDocument = async (buf, name) => { docs.push({ name, size: buf.length }); return {}; };
+  const bot = new Bot({ tg, store, ledger, files, log: { warn() {} } });
+  const chat = { id: 42 };
+  await bot.handle({ message: { chat, text: '/export' } });
+  const m = tg.sent[tg.sent.length - 1];
+  await bot.handle({ callback_query: { id: 'q', data: 'p|last-month', message: { message_id: m.message_id, chat } } });
+  await bot.handle({ callback_query: { id: 'q', data: 'q|all', message: { message_id: m.message_id, chat } } });
+  assert.equal(docs.length, 1);
+  assert.match(docs[0].name, /^Books CodeCrust \+ AITA \d{4}-\d{2}-01 to \d{4}-\d{2}-\d{2}\.zip$/);
+});
