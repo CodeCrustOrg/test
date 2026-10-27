@@ -9,7 +9,7 @@
 :root {
   --bg: #F1F4F3; --surface: #FBFCFB; --sunk: #E8EDEB; --ink: #15201D; --ink2: #44524E; --muted: #6E7C78;
   --line: #D6DEDB; --accent: #0E5C4E; --accent-ink: #FFFFFF; --accent-soft: #D7EBE5;
-  --in: #2F6BD0; --out: #D2761F; --warn: #9A5B00; --warn-soft: #FBEBD0; --crit: #B42318; --crit-soft: #FBE1DE; --good: #1D6B45; --good-soft: #DAF0E3;
+  --in: #2F6BD0; --out: #D2761F; --warn: #9A5B00; --warn-soft: #FBEBD0; --crit: #B42318; --crit-soft: #FBE1DE; --good: #1D6B45; --good-soft: #DAF0E3; --e1: #00806A; --e2: #8E4EC6;
   --f-body: "Figtree", "Segoe UI", system-ui, sans-serif;
   --f-num: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
   --f-display: "Bricolage Grotesque", "Figtree", system-ui, sans-serif;
@@ -18,12 +18,12 @@
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
   --bg: #0D1211; --surface: #141A19; --sunk: #1B2321; --ink: #E5ECE9; --ink2: #B2BEBA; --muted: #84928E;
   --line: #29332F; --accent: #5CC2A8; --accent-ink: #06201A; --accent-soft: #173A32;
-  --in: #4F86E0; --out: #CF7A2E; --warn: #E8B45C; --warn-soft: #3A2C12; --crit: #F28B82; --crit-soft: #3D1C19; --good: #6FCF97; --good-soft: #15342A;
+  --in: #4F86E0; --out: #CF7A2E; --warn: #E8B45C; --warn-soft: #3A2C12; --crit: #F28B82; --crit-soft: #3D1C19; --good: #6FCF97; --good-soft: #15342A; --e1: #2AA58C; --e2: #A97BE0;
   color-scheme: dark; } }
 :root[data-theme="dark"] {
   --bg: #0D1211; --surface: #141A19; --sunk: #1B2321; --ink: #E5ECE9; --ink2: #B2BEBA; --muted: #84928E;
   --line: #29332F; --accent: #5CC2A8; --accent-ink: #06201A; --accent-soft: #173A32;
-  --in: #4F86E0; --out: #CF7A2E; --warn: #E8B45C; --warn-soft: #3A2C12; --crit: #F28B82; --crit-soft: #3D1C19; --good: #6FCF97; --good-soft: #15342A;
+  --in: #4F86E0; --out: #CF7A2E; --warn: #E8B45C; --warn-soft: #3A2C12; --crit: #F28B82; --crit-soft: #3D1C19; --good: #6FCF97; --good-soft: #15342A; --e1: #2AA58C; --e2: #A97BE0;
   color-scheme: dark; }
 * { box-sizing: border-box; }
 body { background: var(--bg); color: var(--ink); font: 15px/1.5 var(--f-body); }
@@ -78,7 +78,21 @@ textarea { width: 100%; min-height: 120px; font-family: var(--f-num); font-size:
 .who .sub { font-weight: 400; font-size: 13px; color: var(--muted); display: block; }
 .amt { font: 600 18px var(--f-num); font-variant-numeric: tabular-nums; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
 .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: none; }
-.dot.in { background: var(--in); } .dot.out { background: var(--out); }
+.dot.in { background: var(--in); } .dot.out { background: var(--out); } .dot.net { background: var(--ink2); } .dot.e1 { background: var(--e1); } .dot.e2 { background: var(--e2); }
+.delta { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; }
+.tile .k { min-width: 0; overflow-wrap: anywhere; }
+.hbars { display: grid; gap: 8px; }
+.hbar { display: grid; grid-template-columns: minmax(90px, 1.3fr) 2fr auto 3.2em; gap: 10px; align-items: center; font-size: 13px; }
+.hbar .l { overflow-wrap: anywhere; min-width: 0; }
+.hbar .track { height: 10px; background: var(--sunk); border-radius: 0 4px 4px 0; }
+.hbar .track i { display: block; height: 100%; background: var(--out); border-radius: 0 4px 4px 0; }
+.hbar .a, .hbar .s { text-align: right; }
+.hbar .s { color: var(--muted); }
+.meters { display: grid; gap: 10px; margin-top: 6px; }
+.small-amt { font-size: 14px; }
+table.cov td, table.cov th { text-align: center; padding: 6px 4px; }
+table.cov td:first-child, table.cov th:first-child { text-align: left; white-space: nowrap; }
+@media (max-width: 560px) { .hbar { grid-template-columns: 1fr auto; } .hbar .track { grid-column: 1 / -1; grid-row: 2; } .hbar .s { display: none; } }
 .kinds { display: flex; flex-wrap: wrap; gap: 6px; }
 .fields { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .fields input[type=text] { flex: 1 1 220px; }
@@ -97,7 +111,7 @@ textarea { width: 100%; min-height: 120px; font-family: var(--f-num); font-size:
 .qrow input { flex: 1 1 260px; font-family: var(--f-num); font-size: 12px; }
 .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .err { color: var(--crit); font-size: 13px; }
-.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; display: grid; gap: 12px; min-width: 0; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; display: grid; gap: 12px; min-width: 0; align-content: start; }
 .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
 .tile { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px; }
 .tile .k { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; display: flex; gap: 6px; align-items: center; }
@@ -154,7 +168,7 @@ const KINDS = {
   transfer: { out: 'Own transfer', in: 'Own transfer' },
   personal: { out: 'Personal', in: 'Personal' },
 };
-const VIEWS = [['review', 'To do'], ['ledger', 'Ledger'], ['summary', 'Summary'], ['statements', 'Statements'], ['setup', 'Setup']];
+const VIEWS = [['dashboard', 'Dashboard'], ['review', 'To do'], ['ledger', 'Ledger'], ['statements', 'Statements'], ['setup', 'Setup']];
 
 const S = {
   db: null, mcp: null, assets: null, dl: null, dbState: 'loading',
@@ -164,7 +178,7 @@ const S = {
   draft: {}, inv: {}, editing: null, busy: {},
   syncing: null, syncMsg: null,
   ledger: { month: 'all', q: '', kind: 'all' },
-  fy: null, stmt: { acct: null, file: null, rows: null, map: null, parsed: null, result: null, error: null },
+  fy: null, period: 'fy', tips: {}, stmt: { acct: null, file: null, rows: null, map: null, parsed: null, result: null, error: null },
   loaded: { txns: false, accounts: false },
 };
 
@@ -216,11 +230,11 @@ function render() {
   if (S.dbState === 'none') html += `<div class="panel empty"><h2>Open Books in claude.ai</h2><p class="muted">Your ledger is stored with this page on claude.ai, so it only loads there.</p></div>`;
   else if (S.view === 'review') html += viewReview();
   else if (S.view === 'ledger') html += viewLedger();
-  else if (S.view === 'summary') html += viewSummary();
+  else if (S.view === 'dashboard') html += viewDashboard();
   else if (S.view === 'statements') html += viewStatements();
   else html += viewSetup();
   $('#main').innerHTML = html;
-  if (S.view === 'summary') wireChart();
+  if (S.view === 'dashboard') wireCharts();
   if (fid) { const el = document.getElementById(fid); if (el) { el.focus(); if (sel) try { el.setSelectionRange(sel[0], sel[1]); } catch (_) {} } }
 }
 
@@ -400,88 +414,254 @@ function exportCsv() {
   S.dl.save({ filename: name, data: lines.join('\n') }).catch(e => { if (e && e.code !== 'cancelled') flash('crit', 'Could not save the file: ' + esc(e.message || e.code)); });
 }
 
-// ---------- summary ----------
-function viewSummary() {
-  const all = [...S.txns.values()].filter(inScope).filter(t => t.date);
-  if (!all.length) return `<div class="panel empty"><h2>Nothing to summarise yet</h2><p class="muted">Sync Gmail first.</p></div>`;
-  const fys = [...new Set(all.map(t => fyOf(t.date)))].sort().reverse();
-  if (!S.fy || !fys.includes(S.fy)) S.fy = fys[0];
-  const list = all.filter(t => fyOf(t.date) === S.fy);
-  const both = S.entity === 'all';
-  const counted = t => t.kind !== 'transfer' && !(both && t.kind === 'intercompany');
-  let inP = 0, outP = 0, pers = 0, ic = 0;
-  const months = []; for (let i = 0; i < 12; i++) { const m = i + 4 > 12 ? i - 8 : i + 4; const y = m < 4 ? S.fy + 1 : S.fy; months.push({ key: `${y}-${String(m).padStart(2, '0')}`, in: 0, out: 0 }); }
-  const byCat = {};
+// ---------- dashboard ----------
+const ENT_VAR = { codecrust: 'e1', aita: 'e2' };
+function fyMonths(fy) { const out = []; for (let i = 0; i < 12; i++) { const m = ((i + 3) % 12) + 1; out.push(`${m < 4 ? fy + 1 : fy}-${String(m).padStart(2, '0')}`); } return out; }
+function prevMonth(m) { const y = +m.slice(0, 4), mo = +m.slice(5, 7); return mo === 1 ? `${y - 1}-12` : `${y}-${String(mo - 1).padStart(2, '0')}`; }
+function monthEnd(m) { const y = +m.slice(0, 4), mo = +m.slice(5, 7); return `${m}-${String(new Date(Date.UTC(y, mo, 0)).getUTCDate()).padStart(2, '0')}`; }
+function periodLabel() { return S.period === 'fy' ? `FY ${S.fy}–${String(S.fy + 1).slice(2)}` : monthLabel(S.period); }
+
+// Totals for a set of txns. Own transfers never count; inter-company nets out when both companies are shown.
+function flows(list, both) {
+  const r = { in: 0, out: 0, biz: 0, pers: 0, unl: 0, unlN: 0, ic: 0 };
   for (const t of list) {
-    if (!counted(t)) continue;
-    const mo = months.find(m => t.date.startsWith(m.key));
-    if (t.dir === 'in') { inP += t.paise; if (mo) mo.in += t.paise; } else { outP += t.paise; if (mo) mo.out += t.paise; }
-    if (t.kind === 'personal' && t.dir === 'out') pers += t.paise;
-    if (t.kind === 'intercompany') ic += t.dir === 'in' ? t.paise : -t.paise;
+    if (t.kind === 'transfer' || (both && t.kind === 'intercompany')) continue;
+    if (t.dir === 'in') r.in += t.paise; else r.out += t.paise;
     if (t.dir === 'out') {
-      const k = t.status === 'todo' ? 'Not labelled yet' : t.kind === 'business' ? (t.cat || 'Uncategorised') : KINDS[t.kind] ? KINDS[t.kind].out : 'Other';
-      const c = byCat[k] = byCat[k] || { p: 0, n: 0, inv: 0, needInv: 0 }; c.p += t.paise; c.n++;
-      if (t.kind === 'business') { c.needInv += t.inv && t.inv.state === 'not_needed' ? 0 : 1; if (t.inv && t.inv.state === 'attached') c.inv++; }
+      if (t.status === 'todo') { r.unl += t.paise; r.unlN++; }
+      else if (t.kind === 'business') r.biz += t.paise;
+      else if (t.kind === 'personal') r.pers += t.paise;
     }
+    if (t.kind === 'intercompany') r.ic += t.dir === 'in' ? t.paise : -t.paise;
   }
-  S.chart = months;
-  const cats = Object.entries(byCat).sort((a, b) => b[1].p - a[1].p);
-  const cnt = reviewCounts(); const gaps = balanceGapList();
-  const stAccts = [...S.accounts.values()].filter(a => ENTITIES[a.entity] && (both || a.entity === S.entity));
-  const lastMonth = (() => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 1); return d.toISOString().slice(0, 7); })();
-  const noStmt = stAccts.filter(a => ![...S.statements.values()].some(s => s.acct === a.id && s.to >= lastMonth + '-25'));
-  const health = [
-    [cnt.label, 'to label', 'review'], [cnt.invoice, 'business expenses without an invoice', 'review'], [cnt.stmt, 'alerts not found on a statement', 'review'],
-    [gaps.length, 'IndusInd balance gaps (likely missing transactions)', 'review'], [noStmt.length, `account${noStmt.length === 1 ? '' : 's'} without a ${monthLabel(lastMonth)} statement imported`, 'statements'],
-  ];
-  return `<div class="toolbar"><h2 class="grow">${both ? 'Both companies' : ENTITIES[S.entity]} · FY ${S.fy}–${String(S.fy + 1).slice(2)}</h2>
-    <select id="fy" data-field="fy" aria-label="Financial year">${fys.map(y => `<option value="${y}" ${y === S.fy ? 'selected' : ''}>FY ${y}–${String(y + 1).slice(2)}</option>`).join('')}</select></div>
-  <div class="tiles">
-    <div class="tile"><div class="k"><span class="dot in"></span>Money in</div><div class="v">${P.fmtINR(inP)}</div></div>
-    <div class="tile"><div class="k"><span class="dot out"></span>Money out</div><div class="v">${P.fmtINR(outP)}</div></div>
-    <div class="tile"><div class="k">Net</div><div class="v">${P.fmtINR(inP - outP)}</div></div>
-    <div class="tile"><div class="k">Personal spends</div><div class="v">${P.fmtINR(pers)}</div></div>
-  </div>
-  <p class="small muted">Own transfers are left out${both ? ', and so are inter-company transfers, because they cancel out between the two companies' : `. Inter-company net: ${P.fmtINR(ic)}`}. Totals cover bank alerts plus imported statements.</p>
-  <div class="grid2">
-    <div class="panel"><div class="toolbar"><h3 class="grow">Month by month</h3><div class="legend"><span><span class="dot in"></span>In</span><span><span class="dot out"></span>Out</span></div></div>
-      <div class="chart" id="chart">${chartSvg(months)}<div class="tip" id="tip" hidden></div></div></div>
-    <div class="panel"><h3>Needs attention</h3><ul class="plain health">${health.map(([n, l, v]) => `<li><span class="tag ${n ? 'warn' : 'good'} num">${n}</span><a href="#${v}">${l}</a></li>`).join('')}</ul></div>
-  </div>
-  <div class="panel tablewrap"><h3>Where the money went</h3>${cats.length ? `<table><thead><tr><th>Category</th><th class="r">Count</th><th class="r">Amount</th><th class="r">Share</th><th class="r">With invoice</th></tr></thead><tbody>
-    ${cats.map(([k, c]) => `<tr><td>${esc(k)}</td><td class="r num">${c.n}</td><td class="r num">${P.fmtINR(c.p)}</td><td class="r num">${outP ? Math.round(100 * c.p / outP) : 0}%</td><td class="r num">${c.needInv ? `${c.inv} / ${c.needInv}` : '—'}</td></tr>`).join('')}
-  </tbody></table>` : '<p class="muted">No outflows this year.</p>'}</div>`;
+  r.net = r.in - r.out;
+  return r;
+}
+function delta(cur, prev, label) {
+  if (!prev) return '<span class="delta">&nbsp;</span>';
+  const d = Math.round(100 * (cur - prev) / Math.abs(prev));
+  return `<span class="delta">${d >= 0 ? '▲' : '▼'} ${Math.abs(d)}% vs ${esc(label)}</span>`;
+}
+function latestBalance(acctId) {
+  let best = null;
+  for (const t of S.txns.values()) {
+    if (t.acct !== acctId) continue;
+    const b = t.balPaise != null ? t.balPaise : t.stmtBal != null ? t.stmtBal : null;
+    if (b == null) continue;
+    const key = (t.date || '') + String(t.ts || 0).padStart(15, '0');
+    if (!best || key > best.key) best = { key, b, date: t.date };
+  }
+  return best;
+}
+function balanceSeries(acctId, from, to) {
+  const pts = [];
+  for (const t of S.txns.values()) {
+    if (t.acct !== acctId || !t.date) continue;
+    const b = t.balPaise != null ? t.balPaise : t.stmtBal != null ? t.stmtBal : null;
+    if (b != null) pts.push({ date: t.date, k: (t.date || '') + String(t.ts || 0).padStart(15, '0'), b });
+  }
+  pts.sort((a, b) => a.k < b.k ? -1 : 1);
+  const byDay = new Map(); for (const p of pts) byDay.set(p.date, p.b); // last balance of each day
+  const days = [...byDay.entries()].map(([date, b]) => ({ date, b }));
+  const before = days.filter(p => p.date < from).pop();
+  const inside = days.filter(p => p.date >= from && p.date <= to);
+  return before ? [{ date: from, b: before.b }].concat(inside) : inside;
 }
 
-function chartSvg(months) {
-  const W = 520, H = 220, L = 56, R = 8, T = 10, B = 26;
-  const max = Math.max(1, ...months.map(m => Math.max(m.in, m.out)));
-  const step = niceStep(max / 4); const top = Math.ceil(max / step) * step;
-  const y = v => T + (H - T - B) * (1 - v / top);
-  const bw = (W - L - R) / months.length; const w = Math.max(3, (bw - 8) / 2);
-  let g = '';
-  for (let v = 0; v <= top + 1; v += step) g += `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" stroke-width="1"/><text x="${L - 6}" y="${y(v) + 4}" text-anchor="end" font-size="10" fill="var(--muted)" font-family="var(--f-num)">${shortINR(v)}</text>`;
-  months.forEach((m, i) => {
-    const x = L + i * bw + 4;
-    const bar = (v, dx, cls) => v ? `<path d="${roundTop(x + dx, y(v), w, y(0) - y(v))}" fill="var(--${cls})"/>` : '';
-    g += bar(m.in, 0, 'in') + bar(m.out, w + 2, 'out');
-    g += `<text x="${x + w + 1}" y="${H - 8}" text-anchor="middle" font-size="10" fill="var(--muted)">${MON[+m.key.slice(5) - 1]}</text>`;
-    g += `<rect x="${L + i * bw}" y="${T}" width="${bw}" height="${H - T - B}" fill="transparent" data-i="${i}" class="hit"/>`;
-  });
-  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Money in and out by month">${g}</svg>`;
+function viewDashboard() {
+  if (!S.loaded.txns) return `<div class="panel empty"><p class="muted">Loading your books…</p></div>`;
+  const all = [...S.txns.values()].filter(inScope).filter(t => t.date);
+  if (!all.length) return `<div class="panel empty"><h2>Your dashboard fills in after the first sync</h2><p class="muted">Sync Gmail to pull HDFC and IndusInd alerts from ${dLong(S.settings.since || DEFAULT_SINCE)} onward.</p><button class="primary" data-act="sync" ${S.mcp ? '' : 'disabled'}>Sync Gmail</button></div>`;
+  const both = S.entity === 'all';
+  const fys = [...new Set(all.map(t => fyOf(t.date)))].sort().reverse();
+  if (!S.fy || !fys.includes(S.fy)) S.fy = fys[0];
+  const months = fyMonths(S.fy);
+  const nowM = P.istDate(Date.now()).slice(0, 7);
+  const liveMonths = months.filter(m => m <= nowM || all.some(t => t.date.startsWith(m)));
+  if (S.period !== 'fy' && !months.includes(S.period)) S.period = 'fy';
+  const inP = t => S.period === 'fy' ? fyOf(t.date) === S.fy : t.date.startsWith(S.period);
+  const list = all.filter(inP);
+  const f = flows(list, both);
+  let prev = null, prevLabel = '';
+  if (S.period === 'fy') { const pl = all.filter(t => fyOf(t.date) === S.fy - 1); if (pl.length) { prev = flows(pl, both); prevLabel = 'last FY'; } }
+  else { const pm = prevMonth(S.period); const pl = all.filter(t => t.date.startsWith(pm)); if (pl.length) { prev = flows(pl, both); prevLabel = MON[+pm.slice(5) - 1]; } }
+  const from = S.period === 'fy' ? `${S.fy}-04-01` : `${S.period}-01`;
+  const to = S.period === 'fy' ? `${S.fy + 1}-03-31` : monthEnd(S.period);
+  const title = both ? 'Both companies' : ENTITIES[S.entity];
+  const periodSel = `<select id="period" data-field="period" aria-label="Period">${fys.map(y => `<optgroup label="FY ${y}–${String(y + 1).slice(2)}"><option value="fy:${y}" ${S.period === 'fy' && S.fy === y ? 'selected' : ''}>Whole year</option>${fyMonths(y).filter(m => m <= nowM || all.some(t => t.date.startsWith(m))).reverse().map(m => `<option value="m:${m}" ${S.period === m ? 'selected' : ''}>${monthLabel(m)}</option>`).join('')}</optgroup>`).join('')}</select>`;
+
+  // Tiles
+  const tile = (k, v, extra = '', dot = '') => `<div class="tile"><div class="k">${dot}${k}</div><div class="v">${v}</div>${extra}</div>`;
+  let h = `<div class="toolbar"><h2 class="grow">${esc(title)} · ${periodLabel()}</h2>${periodSel}</div>
+  <div class="tiles">
+    ${tile('Money in', P.fmtINR(f.in), delta(f.in, prev && prev.in, prevLabel), '<span class="dot in"></span>')}
+    ${tile('Money out', P.fmtINR(f.out), delta(f.out, prev && prev.out, prevLabel), '<span class="dot out"></span>')}
+    ${tile('Net', P.fmtINR(f.net), delta(f.net, prev && prev.net, prevLabel))}
+    ${tile('Business expenses', P.fmtINR(f.biz), `<span class="delta">${f.pers ? `Personal spends ${P.fmtINR(f.pers)}` : 'No personal spends'}</span>`)}
+  </div>`;
+  if (f.unlN) h += `<div class="status warn"><span><b>${f.unlN}</b> outgoing payment${f.unlN === 1 ? '' : 's'} (${P.fmtINR(f.unl)}) in this period aren't labelled yet, so the expense figures are incomplete.</span><a class="btn" href="#review">Label them</a></div>`;
+
+  // Bank balances
+  const accts = [...S.accounts.values()].filter(a => ENTITIES[a.entity] && (both || a.entity === S.entity)).sort((a, b) => a.entity.localeCompare(b.entity));
+  h += `<div class="tiles">${accts.map(a => { const lb = latestBalance(a.id);
+    return `<div class="tile"><div class="k"><span class="dot ${ENT_VAR[a.entity]}"></span>${esc(ENTITIES[a.entity])} · ${esc(acctName(a.id))}</div>
+      <div class="v">${lb ? P.fmtINR(lb.b) : '—'}</div><span class="delta">${lb ? `Balance as of ${dLong(lb.date)}` : 'No balance yet. Import a statement.'}</span></div>`; }).join('')}</div>`;
+
+  // Cash flow by month + needs attention
+  const monthly = liveMonths.map(m => { const r = flows(all.filter(t => t.date.startsWith(m)), both); return { key: m, in: r.in, out: r.out, net: r.net }; });
+  const cnt = reviewCounts(); const gaps = balanceGapList();
+  const lastMonth = prevMonth(nowM);
+  const noStmt = accts.filter(a => ![...S.statements.values()].some(s => s.acct === a.id && s.to >= monthEnd(lastMonth).slice(0, 8) + '25'));
+  const health = [[cnt.label, 'transactions to label'], [cnt.invoice, 'business expenses without an invoice'], [cnt.stmt, 'alerts not found on a statement'], [gaps.length, 'IndusInd balance gaps'], [noStmt.length, `${monthLabel(lastMonth)} statement${noStmt.length === 1 ? '' : 's'} not imported`]];
+  h += `<div class="grid2">
+    <div class="panel"><div class="toolbar"><h3 class="grow">Cash flow by month · FY ${S.fy}–${String(S.fy + 1).slice(2)}</h3>
+      <div class="legend"><span><span class="dot in"></span>In</span><span><span class="dot out"></span>Out</span><span><span class="dot net"></span>Net</span></div></div>
+      ${chartBox('cash', cashChart(monthly))}</div>
+    <div class="panel"><h3>Needs attention</h3><ul class="plain health">${health.map(([n, l]) => `<li><span class="tag ${n ? 'warn' : 'good'} num">${n}</span><a href="#${/statement/.test(l) && !/alerts/.test(l) ? 'statements' : 'review'}">${l}</a></li>`).join('')}</ul>
+      ${(() => { const out = list.filter(t => t.dir === 'out' && t.kind === 'business'); const need = out.filter(t => !t.inv || t.inv.state !== 'not_needed'); const has = need.filter(t => t.inv && t.inv.state === 'attached');
+        const lab = list.filter(t => t.status !== 'todo').length;
+        return `<div class="meters">${meter('Labelled', list.length ? lab / list.length : 1, `${lab} of ${list.length}`)}${meter('Expenses with invoice', need.length ? has.length / need.length : 1, `${has.length} of ${need.length}`)}</div>`; })()}
+    </div></div>`;
+
+  // Categories + balance trend
+  const byCat = {};
+  for (const t of list) {
+    if (t.dir !== 'out' || t.kind === 'transfer' || (both && t.kind === 'intercompany')) continue;
+    const k = t.status === 'todo' ? 'Not labelled yet' : t.kind === 'business' ? (t.cat || 'Uncategorised') : KINDS[t.kind].out;
+    byCat[k] = (byCat[k] || 0) + t.paise;
+  }
+  let cats = Object.entries(byCat).sort((a, b) => b[1] - a[1]);
+  if (cats.length > 8) { const rest = cats.slice(7).reduce((s, c) => s + c[1], 0); cats = cats.slice(0, 7).concat([['Everything else', rest]]); }
+  const maxCat = Math.max(1, ...cats.map(c => c[1]));
+  const series = accts.map(a => ({ id: a.id, label: `${ENTITIES[a.entity]} ${acctName(a.id)}`, cls: ENT_VAR[a.entity], pts: balanceSeries(a.id, from, to) })).filter(s => s.pts.length);
+  h += `<div class="grid2">
+    <div class="panel"><h3>Where the money went</h3>${cats.length ? `<div class="hbars">${cats.map(([k, p]) => `<div class="hbar"><span class="l">${esc(k)}</span><span class="track"><i style="width:${Math.max(1, 100 * p / maxCat)}%"></i></span><span class="a num">${P.fmtINR(p)}</span><span class="s num">${f.out ? Math.round(100 * p / f.out) : 0}%</span></div>`).join('')}</div>` : '<p class="muted">No money out in this period.</p>'}</div>
+    <div class="panel"><div class="toolbar"><h3 class="grow">Bank balance</h3><div class="legend">${series.map(s => `<span><span class="dot ${s.cls}"></span>${esc(s.label)}</span>`).join('')}</div></div>
+      ${series.length ? chartBox('bal', balChart(series, from, to)) : '<p class="muted small">IndusInd alerts carry the balance; HDFC alerts don\'t. HDFC balances appear here once you import a statement.</p>'}</div>
+  </div>`;
+
+  // Company split
+  if (both) {
+    h += `<div class="panel tablewrap"><h3>By company · ${periodLabel()}</h3><table><thead><tr><th>Company</th><th class="r">In</th><th class="r">Out</th><th class="r">Net</th><th class="r">Inter-company net</th><th class="r">To label</th><th class="r">Missing invoices</th></tr></thead><tbody>
+      ${Object.entries(ENTITIES).map(([k, name]) => { const l = list.filter(t => entityOf(t) === k); const r = flows(l, false);
+        return `<tr><td><span class="dot ${ENT_VAR[k]}"></span> ${esc(name)}</td><td class="r num">${P.fmtINR(r.in)}</td><td class="r num">${P.fmtINR(r.out)}</td><td class="r num">${P.fmtINR(r.net)}</td><td class="r num">${P.fmtINR(r.ic)}</td><td class="r num">${l.filter(t => t.status === 'todo').length}</td><td class="r num">${l.filter(needsInvoice).length}</td></tr>`; }).join('')}
+    </tbody></table></div>`;
+  }
+
+  // Top payees / payers
+  const top = dir => { const g = {}; for (const t of list) { if (t.dir !== dir || t.kind === 'transfer') continue; const k = P.partyKey(t) || t.narr || '?'; const e = g[k] = g[k] || { label: t.party || t.vpa || t.stmtNarr || t.narr || 'Unknown', p: 0, n: 0 }; e.p += t.paise; e.n++; } return Object.values(g).sort((a, b) => b.p - a.p).slice(0, 6); };
+  const topTable = (rows, empty) => rows.length ? `<table><tbody>${rows.map(r => `<tr><td class="party">${esc(r.label)}</td><td class="r num muted">${r.n}×</td><td class="r num">${P.fmtINR(r.p)}</td></tr>`).join('')}</tbody></table>` : `<p class="muted">${empty}</p>`;
+  h += `<div class="grid2"><div class="panel tablewrap"><h3>Paid most to</h3>${topTable(top('out'), 'No payments in this period.')}</div>
+    <div class="panel tablewrap"><h3>Received most from</h3>${topTable(top('in'), 'Nothing received in this period.')}</div></div>`;
+
+  // Statement coverage
+  const covered = (a, m) => [...S.statements.values()].some(s => s.acct === a.id && s.from <= `${m}-03` && s.to >= `${monthEnd(m).slice(0, 8)}${String(+monthEnd(m).slice(8) - 3).padStart(2, '0')}`);
+  const covMonths = liveMonths.filter(m => m <= nowM);
+  h += `<div class="panel tablewrap"><h3>Statements reconciled</h3><table class="cov"><thead><tr><th>Account</th>${covMonths.map(m => `<th>${MON[+m.slice(5) - 1]}</th>`).join('')}</tr></thead><tbody>
+    ${accts.map(a => `<tr><td>${esc(acctName(a.id))}</td>${covMonths.map(m => { const c = covered(a, m); const any = [...S.txns.values()].some(t => t.acct === a.id && (t.date || '').startsWith(m));
+      return `<td>${c ? '<span class="tag good" title="Statement imported and matched">✓</span>' : any ? '<span class="tag warn" title="Alerts only: import this month\'s statement">Alerts</span>' : '<span class="muted">·</span>'}</td>`; }).join('')}</tr>`).join('')}
+  </tbody></table><p class="small muted">✓ statement imported and matched · Alerts = only email alerts so far, so charges and cheques may be missing.</p></div>`;
+
+  // Recent
+  const recent = list.slice().sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.ts || 0) - (a.ts || 0)).slice(0, 8);
+  h += `<div class="panel tablewrap"><div class="toolbar"><h3 class="grow">Latest transactions</h3><a href="#ledger">Open ledger</a></div><table><tbody>${recent.map(t => `<tr class="click" data-act="open-txn" data-id="${esc(t.id)}" tabindex="0"><td class="num">${dShort(t.date)}</td><td class="party">${esc(t.party || t.vpa || t.stmtNarr || t.narr || '')}<div class="muted small">${esc(acctName(t.acct))}${t.status === 'todo' ? ' · to label' : t.kind === 'business' ? ' · ' + esc(t.cat || '') : t.kind ? ' · ' + esc(KINDS[t.kind][t.dir]) : ''}</div></td><td class="r"><span class="amt small-amt"><span class="dot ${t.dir}"></span><span class="num">${money(t.paise, t.dir)}</span></span></td></tr>`).join('')}</tbody></table></div>
+  <p class="small muted">Own transfers are left out of totals${both ? ', and so is money moving between CodeCrust and AITA, because it cancels out' : ''}. Figures cover email alerts plus imported statements.</p>`;
+  return h;
 }
-function roundTop(x, y, w, h) { if (h <= 0) return ''; const r = Math.min(4, w / 2, h); return `M${x},${y + h}V${y + r}Q${x},${y} ${x + r},${y}H${x + w - r}Q${x + w},${y} ${x + w},${y + r}V${y + h}Z`; }
-function niceStep(raw) { const p = Math.pow(10, Math.floor(Math.log10(raw))); const n = raw / p; return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * p; }
-function shortINR(p) { const r = p / 100; if (r >= 1e7) return '₹' + +(r / 1e7).toFixed(1) + 'Cr'; if (r >= 1e5) return '₹' + +(r / 1e5).toFixed(1) + 'L'; if (r >= 1e3) return '₹' + +(r / 1e3).toFixed(0) + 'k'; return '₹' + r; }
-function wireChart() {
-  const box = $('#chart'), tip = $('#tip'); if (!box) return;
-  box.querySelectorAll('.hit').forEach(el => {
-    const show = () => { const m = S.chart[+el.dataset.i]; const r = el.getBoundingClientRect(), b = box.getBoundingClientRect();
-      tip.innerHTML = `<b>${monthLabel(m.key)}</b><br>In ${P.fmtINR(m.in)}<br>Out ${P.fmtINR(m.out)}`; tip.hidden = false;
-      tip.style.left = Math.min(Math.max(60, r.left - b.left + r.width / 2), b.width - 60) + 'px'; tip.style.top = '40px'; };
-    el.addEventListener('mouseenter', show); el.addEventListener('click', show);
+
+function meter(label, frac, text) {
+  const pct = Math.round(100 * frac);
+  return `<div class="meter"><div class="toolbar"><span class="grow small">${label}</span><span class="num small">${pct}% · ${text}</span></div><div class="bar-progress"><i style="width:${pct}%"></i></div></div>`;
+}
+
+// ---------- charts ----------
+const CH = { W: 560, H: 230, L: 62, R: 10, T: 12, B: 26 };
+function chartBox(id, svg) { return `<div class="chart" data-chart="${id}">${svg}<div class="tip" hidden></div></div>`; }
+function niceStep(raw) { if (raw <= 0) return 1; const p = Math.pow(10, Math.floor(Math.log10(raw))); const n = raw / p; return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * p; }
+function shortINR(p) { const r = Math.abs(p) / 100, s = p < 0 ? '−' : ''; if (r >= 1e7) return s + '₹' + +(r / 1e7).toFixed(1) + 'Cr'; if (r >= 1e5) return s + '₹' + +(r / 1e5).toFixed(1) + 'L'; if (r >= 1e3) return s + '₹' + +(r / 1e3).toFixed(0) + 'k'; return s + '₹' + Math.round(r); }
+function yScale(lo, hi) {
+  const step = niceStep((hi - lo) / 4 || 1); const min = Math.floor(lo / step) * step, max = Math.ceil(hi / step) * step || step;
+  const { H, T, B } = CH; const y = v => T + (H - T - B) * (1 - (v - min) / (max - min || 1));
+  const ticks = []; for (let v = min; v <= max + step / 2; v += step) ticks.push(v);
+  return { y, ticks };
+}
+function grid(ys) { const { L, W, R } = CH; return ys.ticks.map(v => `<line x1="${L}" x2="${W - R}" y1="${ys.y(v)}" y2="${ys.y(v)}" stroke="var(--line)" stroke-width="${v === 0 ? 1.5 : 1}"/><text x="${L - 6}" y="${ys.y(v) + 4}" text-anchor="end" font-size="10" fill="var(--muted)">${shortINR(v)}</text>`).join(''); }
+function roundBar(x, y0, y1, w) { const top = Math.min(y0, y1), h = Math.abs(y1 - y0); if (h < 0.5) return ''; const r = Math.min(4, w / 2, h); return `M${x},${top + h}V${top + r}Q${x},${top} ${x + r},${top}H${x + w - r}Q${x + w},${top} ${x + w},${top + r}V${top + h}Z`; }
+
+function cashChart(months) {
+  const { W, H, L, R, T, B } = CH;
+  const lo = Math.min(0, ...months.map(m => m.net)), hi = Math.max(1, ...months.map(m => Math.max(m.in, m.out, m.net)));
+  const ys = yScale(lo, hi); const y = ys.y;
+  const bw = (W - L - R) / Math.max(months.length, 1), w = Math.max(3, Math.min(18, (bw - 10) / 2));
+  let g = grid(ys);
+  const tips = [];
+  months.forEach((m, i) => {
+    const cx = L + i * bw + bw / 2;
+    g += `<path d="${roundBar(cx - w - 1, y(0), y(m.in), w)}" fill="var(--in)"/><path d="${roundBar(cx + 1, y(0), y(m.out), w)}" fill="var(--out)"/>`;
+    g += `<text x="${cx}" y="${H - 8}" text-anchor="middle" font-size="10" fill="var(--muted)">${MON[+m.key.slice(5) - 1]}</text>`;
+    tips.push(`<b>${monthLabel(m.key)}</b><br>In ${P.fmtINR(m.in)}<br>Out ${P.fmtINR(m.out)}<br>Net ${P.fmtINR(m.net)}`);
   });
-  box.addEventListener('mouseleave', () => { tip.hidden = true; });
+  if (months.length > 1) g += `<polyline points="${months.map((m, i) => `${L + i * bw + bw / 2},${y(m.net)}`).join(' ')}" fill="none" stroke="var(--ink2)" stroke-width="2" stroke-linejoin="round"/>`;
+  g += months.map((m, i) => `<circle cx="${L + i * bw + bw / 2}" cy="${y(m.net)}" r="4" fill="var(--ink2)" stroke="var(--surface)" stroke-width="2"/>`).join('');
+  g += months.map((m, i) => `<rect class="hit" data-i="${i}" x="${L + i * bw}" y="${T}" width="${bw}" height="${H - T - B}" fill="transparent"/>`).join('');
+  S.tips.cash = { kind: 'bars', tips };
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Money in, money out and net by month">${g}</svg>`;
+}
+
+function balChart(series, from, to) {
+  const { W, H, L, R, T, B } = CH;
+  const x0 = Date.parse(from), x1 = Date.parse(to);
+  const x = d => L + (W - L - R) * (Date.parse(d) - x0) / Math.max(1, x1 - x0);
+  const vals = series.flatMap(s => s.pts.map(p => p.b));
+  const lo = Math.min(...vals), hi = Math.max(...vals); const pad = (hi - lo) * 0.1 || Math.abs(hi) * 0.1 || 100;
+  const ys = yScale(Math.max(0, lo - pad), hi + pad); const y = ys.y;
+  let g = grid(ys);
+  // x ticks: month starts across a year, weeks inside a month
+  const ticks = [];
+  if (x1 - x0 > 40 * 86400000) { for (let d = new Date(x0); d <= x1; d.setUTCMonth(d.getUTCMonth() + 1)) ticks.push([d.toISOString().slice(0, 10), MON[d.getUTCMonth()]]); }
+  else for (const day of [1, 8, 15, 22, 29]) { const d = from.slice(0, 8) + String(day).padStart(2, '0'); if (d <= to) ticks.push([d, `${day} ${MON[+from.slice(5, 7) - 1]}`]); }
+  g += ticks.map(([d, l]) => `<text x="${x(d)}" y="${H - 8}" text-anchor="middle" font-size="10" fill="var(--muted)">${l}</text>`).join('');
+  for (const s of series) {
+    let d = `M${x(s.pts[0].date)},${y(s.pts[0].b)}`;
+    for (let i = 1; i < s.pts.length; i++) d += `H${x(s.pts[i].date)}V${y(s.pts[i].b)}`;
+    g += `<path d="${d}" fill="none" stroke="var(--${s.cls})" stroke-width="2" stroke-linejoin="round"/>`;
+    const last = s.pts[s.pts.length - 1];
+    g += `<circle cx="${x(last.date)}" cy="${y(last.b)}" r="4" fill="var(--${s.cls})" stroke="var(--surface)" stroke-width="2"/>`;
+  }
+  g += `<line class="xhair" x1="0" x2="0" y1="${T}" y2="${H - B}" stroke="var(--muted)" stroke-width="1" visibility="hidden"/>`;
+  g += `<rect class="hit-line" x="${L}" y="${T}" width="${W - L - R}" height="${H - T - B}" fill="transparent"/>`;
+  S.tips.bal = { kind: 'line', x0, x1, series };
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Bank balance over time">${g}</svg>`;
+}
+
+function wireCharts() {
+  document.querySelectorAll('.chart[data-chart]').forEach(box => {
+    const id = box.dataset.chart, spec = S.tips[id], tip = box.querySelector('.tip'), svg = box.querySelector('svg');
+    if (!spec || !svg) return;
+    const place = (px) => { const bw = box.getBoundingClientRect().width; tip.style.left = Math.min(Math.max(70, px), bw - 70) + 'px'; tip.style.top = '36px'; tip.hidden = false; };
+    if (spec.kind === 'bars') {
+      box.querySelectorAll('.hit').forEach(el => {
+        const show = () => { tip.innerHTML = spec.tips[+el.dataset.i]; const r = el.getBoundingClientRect(), b = box.getBoundingClientRect(); place(r.left - b.left + r.width / 2); };
+        el.addEventListener('mouseenter', show); el.addEventListener('click', show);
+      });
+    } else {
+      const hit = box.querySelector('.hit-line'), xh = box.querySelector('.xhair');
+      const move = ev => {
+        const b = svg.getBoundingClientRect(); const sx = (ev.clientX - b.left) * CH.W / b.width;
+        const frac = Math.min(1, Math.max(0, (sx - CH.L) / (CH.W - CH.L - CH.R)));
+        const date = new Date(spec.x0 + frac * (spec.x1 - spec.x0)).toISOString().slice(0, 10);
+        const lastDate = spec.series.reduce((m, s) => s.pts[s.pts.length - 1].date > m ? s.pts[s.pts.length - 1].date : m, '');
+        if (date > lastDate) { tip.hidden = true; xh.setAttribute('visibility', 'hidden'); return; }
+        const rows = spec.series.map(s => { const p = s.pts.filter(q => q.date <= date).pop(); return p ? `<span class="dot ${s.cls}"></span> ${esc(s.label)}: ${P.fmtINR(p.b)}` : ''; }).filter(Boolean);
+        if (!rows.length) { tip.hidden = true; xh.setAttribute('visibility', 'hidden'); return; }
+        xh.setAttribute('x1', sx); xh.setAttribute('x2', sx); xh.setAttribute('visibility', 'visible');
+        tip.innerHTML = `<b>${dLong(date)}</b><br>${rows.join('<br>')}`; place(ev.clientX - box.getBoundingClientRect().left);
+      };
+      hit.addEventListener('mousemove', move); hit.addEventListener('click', move);
+      hit.addEventListener('mouseleave', () => { tip.hidden = true; xh.setAttribute('visibility', 'hidden'); });
+    }
+    box.addEventListener('mouseleave', () => { tip.hidden = true; });
+  });
 }
 
 // ---------- statements ----------
@@ -785,6 +965,7 @@ document.addEventListener('click', async ev => {
   if (act === 'rfilter') { S.reviewFilter = v; return schedule(); }
   if (act === 'kind') { const t = S.txns.get(id); draftFor(t).kind = v; return schedule(); }
   if (act === 'save') return saveTxn(id);
+  if (act === 'open-txn') { S.editing = id; location.hash = '#ledger'; return window.scrollTo({ top: 0 }); }
   if (act === 'edit') { S.editing = id; schedule(); return window.scrollTo({ top: 0 }); }
   if (act === 'close-edit') { S.editing = null; return schedule(); }
   if (act === 'assign') return assignAccount(el.dataset.acct, v);
@@ -825,7 +1006,7 @@ document.addEventListener('change', async ev => {
   else if (f === 'upload') upload(id, el.files[0]);
   else if (f === 'lg-month') { S.ledger.month = el.value; schedule(); }
   else if (f === 'lg-kind') { S.ledger.kind = el.value; schedule(); }
-  else if (f === 'fy') { S.fy = +el.value; schedule(); }
+  else if (f === 'period') { const [k, v] = el.value.split(':'); if (k === 'fy') { S.period = 'fy'; S.fy = +v; } else { S.period = v; S.fy = fyOf(v + '-01'); } schedule(); }
   else if (f === 'st-acct') { S.stmt.acct = el.value; S.stmt.result = null; schedule(); }
   else if (f === 'st-file') { if (el.files[0]) loadStatementFile(el.files[0]); }
   else if (f === 'map') { S.stmt.map[el.dataset.v] = +el.value; S.stmt.parsed = P.statementRows(S.stmt.rows, S.stmt.map); schedule(); }
@@ -833,7 +1014,7 @@ document.addEventListener('change', async ev => {
   else if (f === 'since') await setDoc('meta/settings', { ...S.settings, since: el.value || DEFAULT_SINCE });
 });
 
-function route() { const h = location.hash.replace('#', ''); S.view = VIEWS.some(v => v[0] === h) ? h : 'review'; schedule(); }
+function route() { const h = location.hash.replace('#', ''); S.view = VIEWS.some(v => v[0] === h) ? h : 'dashboard'; schedule(); }
 window.addEventListener('hashchange', route);
 
 // ---------- boot ----------
