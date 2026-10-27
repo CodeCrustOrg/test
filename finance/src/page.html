@@ -109,6 +109,7 @@ table.cov td:first-child, table.cov th:first-child { text-align: left; white-spa
 .res button { grid-row: 1 / span 2; grid-column: 2; align-self: center; }
 .qrow { display: flex; gap: 6px; flex-wrap: wrap; }
 .qrow input { flex: 1 1 260px; font-family: var(--f-num); font-size: 12px; }
+.suggest { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; font-size: 13px; background: var(--accent-soft); border-radius: 8px; padding: 6px 10px; }
 .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .err { color: var(--crit); font-size: 13px; }
 .panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; display: grid; gap: 12px; min-width: 0; align-content: start; }
@@ -316,6 +317,7 @@ function card(t, opts = {}) {
   if (t.recon === 'matched') tags.push('<span class="tag good">On statement</span>');
   if (t.auto) tags.push('<span class="tag">Auto-labelled</span>');
   if (t.pairId) tags.push('<span class="tag">Matched pair</span>');
+  if (t.review) tags.push(`<span class="tag warn">${esc(t.review)}</span>`);
   const kindBtns = Object.keys(KINDS).map(k => `<button class="chip" data-act="kind" data-id="${esc(t.id)}" data-v="${k}" aria-pressed="${d.kind === k}">${KINDS[k][t.dir]}</button>`).join('');
   const cats = t.dir === 'out' ? catsOut() : catsIn();
   const catSel = d.kind === 'business' ? `<select id="cat-${esc(t.id)}" data-field="cat" data-id="${esc(t.id)}" aria-label="Category"><option value="">Category…</option>${cats.map(c => `<option ${d.cat === c ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select>` : '';
@@ -327,6 +329,7 @@ function card(t, opts = {}) {
       <div class="amt"><span class="dot ${t.dir}"></span><span class="num">${money(t.paise, t.dir)}</span></div></div>
     <div class="who">${esc(t.party || t.vpa || t.stmtNarr || t.narr || 'Unknown payee')}${sub && (t.party || t.vpa) ? `<span class="sub">${sub}</span>` : ''}</div>
     ${tags.length ? `<div class="chips">${tags.join('')}</div>` : ''}
+    ${t.suggest && t.status === 'todo' ? `<div class="suggest"><span>Suggested: <b>${esc(t.suggest.kind === 'business' ? t.suggest.cat : KINDS[t.suggest.kind][t.dir])}</b>${t.suggest.why ? ` <span class="muted">· ${esc(t.suggest.why)}</span>` : ''}</span><button class="ghost" data-act="use-suggest" data-id="${esc(t.id)}">Use this</button></div>` : ''}
     <div class="kinds" role="group" aria-label="What is this">${kindBtns}</div>
     <div class="fields">${catSel}
       <input type="text" id="note-${esc(t.id)}" data-field="note" data-id="${esc(t.id)}" value="${esc(d.note)}" placeholder="What was it for? (client, project, item)" aria-label="Note">
@@ -358,7 +361,7 @@ function invoiceBlock(t, d) {
       <button class="ghost" data-act="inv-mode" data-id="${esc(t.id)}">${st.mode === 'party' ? 'Search by amount' : 'Search by payee name'}</button></div>`;
     if (st.error) res += `<p class="err">${esc(st.error)}</p>`;
     else if (st.results && !st.results.length) res += `<p class="small muted">No matching emails between a week before and four days after the payment. Try the payee name, or upload the bill.</p>`;
-    else if (st.results) res += `<div class="results">${st.results.map((r, i) => `<div class="res"><span class="s">${esc(r.subject || '(no subject)')}</span>
+    else if (st.results) res += `<div class="results">${st.results.map((r, i) => `<div class="res"><span class="s">${r.ai ? '<span class="tag good">Best match</span> ' : ''}${esc(r.subject || '(no subject)')}${r.reason ? ` <span class="muted">· ${esc(r.reason)}</span>` : ''}</span>
       <span class="f">${esc(r.from)} · ${esc(r.date ? dShort(r.date.slice(0, 10)) : '')}${r.snippet ? ' · ' + esc(r.snippet.slice(0, 110)) : ''}</span>
       <button data-act="inv-attach" data-id="${esc(t.id)}" data-v="${i}">Attach</button></div>`).join('')}</div>`;
   }
@@ -671,16 +674,20 @@ function viewStatements() {
   const st = S.stmt; if (!st.acct || !accts.some(a => a.id === st.acct)) st.acct = accts[0].id;
   const done = [...S.statements.values()].filter(s => s.acct === st.acct).sort((a, b) => (b.to || '').localeCompare(a.to || ''));
   let imp = `<div class="panel"><h3>Import a statement</h3>
-    <p class="small muted">Download the statement for this account from net banking as Excel (.xls / .xlsx) or CSV, then pick the file here. Books matches every row to your alerts, adds the rows that had no alert, and flags alerts that never reached the bank. PDF statements aren't read yet.</p>
+    <p class="small muted">Download the statement for this account from net banking as Excel (.xls / .xlsx) or CSV, then pick the file here. Books matches every row to your alerts, adds the rows that had no alert, and flags alerts that never reached the bank. ${window.BOOKS_LOCAL ? 'PDF statements work too: they are read by AI and every row is balance-checked.' : 'PDF statements are only read by the local app.'}</p>
     <div class="toolbar"><select id="st-acct" data-field="st-acct" aria-label="Account">${accts.map(a => `<option value="${esc(a.id)}" ${a.id === st.acct ? 'selected' : ''}>${esc(acctName(a.id))} · ${ENTITIES[a.entity]}</option>`).join('')}</select>
-    <input type="file" id="st-file" data-field="st-file" accept=".xls,.xlsx,.csv,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"></div>`;
+    <input type="file" id="st-file" data-field="st-file" accept=".xls,.xlsx,.csv,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet${window.BOOKS_LOCAL ? ',.pdf,application/pdf' : ''}"></div>`;
+  if (st.pdfFile) imp += `<div class="toolbar"><input type="password" id="st-pass" data-field="st-pass" placeholder="PDF password (if it has one)" autocomplete="off" aria-label="PDF password"><button class="primary" data-act="pdf-read" ${S.busy.pdf ? 'disabled' : ''}>${S.busy.pdf ? 'Reading…' : 'Read PDF'}</button><span class="small muted">${esc(st.pdfFile.name)}</span></div>`;
   if (st.error) imp += `<p class="err">${esc(st.error)}</p>`;
-  if (st.rows && st.map) {
-    const cols = (st.rows[st.map.headerRow] || []).map((c, i) => [i, P.squash(c) || `Column ${i + 1}`]);
+  if (st.parsed) {
+    const cols = !st.map ? [] : (st.rows[st.map.headerRow] || []).map((c, i) => [i, P.squash(c) || `Column ${i + 1}`]);
     const sel = (k, label) => `<label class="small">${label}<br><select id="map-${k}" data-field="map" data-v="${k}"><option value="-1">—</option>${cols.map(([i, c]) => `<option value="${i}" ${st.map[k] === i ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select></label>`;
     const p = st.parsed || []; const tot = P.statementTotals(p);
-    imp += `<div class="fields">${sel('date', 'Date')}${sel('narr', 'Narration')}${sel('debit', 'Withdrawal')}${sel('credit', 'Deposit')}${sel('amount', 'Amount (single column)')}${sel('drcr', 'Dr / Cr')}${sel('balance', 'Balance')}${sel('ref', 'Reference')}</div>
-      <p class="small">${p.length} rows · ${dLong(tot.from)} to ${dLong(tot.to)} · in <span class="num">${P.fmtINR(tot.inPaise)}</span> · out <span class="num">${P.fmtINR(tot.outPaise)}</span>
+    if (st.pdf) imp += st.pdf.breaks.length
+      ? `<div class="status warn">Read by AI from ${st.pdf.pages} PDF page${st.pdf.pages === 1 ? '' : 's'}. <b>${st.pdf.breaks.length}</b> row${st.pdf.breaks.length === 1 ? '' : 's'} don't follow from the balance before (first: ${dLong(st.pdf.breaks[0].date)}, ${esc(st.pdf.breaks[0].narr.slice(0, 60))}). Check them against the PDF before reconciling.</div>`
+      : `<div class="status info">Read by AI from ${st.pdf.pages} PDF page${st.pdf.pages === 1 ? '' : 's'}. Every row's balance follows from the one before, so no row was misread or skipped.</div>`;
+    if (st.map) imp += `<div class="fields">${sel('date', 'Date')}${sel('narr', 'Narration')}${sel('debit', 'Withdrawal')}${sel('credit', 'Deposit')}${sel('amount', 'Amount (single column)')}${sel('drcr', 'Dr / Cr')}${sel('balance', 'Balance')}${sel('ref', 'Reference')}</div>`;
+    imp += `      <p class="small">${p.length} rows · ${dLong(tot.from)} to ${dLong(tot.to)} · in <span class="num">${P.fmtINR(tot.inPaise)}</span> · out <span class="num">${P.fmtINR(tot.outPaise)}</span>
       ${tot.balanced === true ? ' · <span class="tag good">Balances add up</span>' : tot.balanced === false ? ' · <span class="tag crit">Balances don\'t add up: check the columns</span>' : ''}</p>
       <div class="tablewrap preview"><table><thead><tr><th>Date</th><th>Narration</th><th class="r">In</th><th class="r">Out</th><th class="r">Balance</th></tr></thead><tbody>
       ${p.slice(0, 6).map(r => `<tr><td class="num">${dShort(r.date)}</td><td class="party">${esc(r.narr)}</td><td class="r num">${r.dir === 'in' ? P.fmtINR(r.paise) : ''}</td><td class="r num">${r.dir === 'out' ? P.fmtINR(r.paise) : ''}</td><td class="r num">${r.balPaise != null ? P.fmtINR(r.balPaise) : ''}</td></tr>`).join('')}
@@ -710,7 +717,12 @@ function loadXlsx() {
 }
 
 async function loadStatementFile(file) {
-  const st = S.stmt; st.error = null; st.result = null; st.rows = st.map = st.parsed = null;
+  const st = S.stmt; st.error = null; st.result = null; st.rows = st.map = st.parsed = st.pdf = st.pdfFile = null;
+  if (/\.pdf$/i.test(file.name) || file.type === 'application/pdf') {
+    if (!window.BOOKS_LOCAL) st.error = 'PDF statements are only read by the local app. Download the Excel/CSV statement instead.';
+    else st.pdfFile = file;
+    return schedule();
+  }
   try {
     await loadXlsx();
     const isCsv = /\.csv$/i.test(file.name) || file.type === 'text/csv';
@@ -723,6 +735,18 @@ async function loadStatementFile(file) {
     if (!st.parsed.length) st.error = 'Found the header row but no transaction rows under it. Check the column choices below.';
   } catch (e) { st.error = e.message || String(e); }
   schedule();
+}
+
+async function readPdfStatement() {
+  const st = S.stmt; if (!st.pdfFile) return;
+  S.busy.pdf = true; st.error = null; schedule();
+  try {
+    const pass = ($('#st-pass') || {}).value || '';
+    const r = await window.booksApi('POST', '/api/statement/pdf', st.pdfFile, { 'Content-Type': 'application/pdf', 'X-Password': encodeURIComponent(pass) });
+    if (!r.rows.length) throw new Error('No transaction rows found in this PDF.');
+    st.parsed = r.rows; st.pdf = { breaks: r.breaks, pages: r.pages }; st.file = st.pdfFile.name; st.pdfFile = null;
+  } catch (e) { st.error = e.message || String(e); }
+  S.busy.pdf = false; schedule();
 }
 
 async function reconcile() {
@@ -759,7 +783,7 @@ async function reconcile() {
     }
     await setDoc(`statements/${docId(`${a.id}_${tot.from}_${tot.to}`)}`, { acct: a.id, from: tot.from, to: tot.to, rows: rows.length, matched, added, missing,
       opening: tot.opening, closing: tot.closing, balanced: tot.balanced, inPaise: tot.inPaise, outPaise: tot.outPaise, file: st.file || '', importedAt: Date.now() });
-    st.rows = st.map = st.parsed = null;
+    st.rows = st.map = st.parsed = st.pdf = null;
     st.result = `Reconciled ${rows.length} rows: <b>${matched}</b> matched an alert, <b>${added}</b> had no alert and were added to your to-do list${missing ? `, <b>${missing}</b> alert${missing === 1 ? '' : 's'} weren't on the statement (check them under To do)` : ''}.`;
   } catch (e) { st.error = 'Reconcile stopped: ' + (e.message || e.code || e); }
   S.busy.recon = false; schedule();
@@ -813,6 +837,7 @@ function newTxnDoc(t, id, a) {
 }
 
 async function runSync(opts = {}) {
+  if (window.BOOKS_LOCAL) return runLocalSync(opts);
   if (S.syncing || !S.mcp || !S.db) return;
   S.syncMsg = null;
   const since = opts.full || !S.sync.lastMailMs ? (S.settings.since || DEFAULT_SINCE) : P.istDate(S.sync.lastMailMs - 3 * 86400000);
@@ -879,6 +904,17 @@ async function runSync(opts = {}) {
   S.syncing = null; schedule();
 }
 
+// Local app: the Books server reads Gmail, the page just asks it to run now.
+async function runLocalSync(opts = {}) {
+  if (S.syncing) return;
+  S.syncMsg = null; S.syncing = { phase: 'Checking Gmail', done: 0, total: 0 }; schedule();
+  try {
+    const r = await window.booksApi('POST', '/api/sync' + (opts.full ? '?full=1' : ''));
+    S.syncMsg = { tone: r.unreadable ? 'warn' : 'info', html: `Sync done. ${r.created ? `<b>${r.created}</b> new transaction${r.created === 1 ? '' : 's'} to review` : 'No new transactions'}${r.aiRead ? `, ${r.aiRead} read by AI (check them)` : ''}${r.unreadable ? `. ${r.unreadable} alert email${r.unreadable === 1 ? '' : 's'} couldn't be read` : ''}.` };
+  } catch (e) { S.syncMsg = { tone: 'crit', html: esc(e.message || 'Sync failed') }; }
+  S.syncing = null; schedule();
+}
+
 // Same reference leaving one tracked account and arriving in another = money moving between the companies.
 async function pairInterCompany() {
   const byRef = {};
@@ -929,8 +965,8 @@ async function invSearch(id) {
   const st = S.inv[id]; if (!st) return;
   st.loading = true; st.error = null; schedule();
   try {
-    const p = await gmail('search_threads', { query: st.q, pageSize: 8 });
-    st.results = (p.threads || []).map(th => { const m = (th.messages || [])[0] || {}; return { id: m.id, url: m.viewUrl || th.viewUrl, subject: m.subject, from: m.sender, date: m.date, snippet: P.squash(P.htmlToText(m.snippet || '')) }; });
+    const p = await gmail('search_threads', window.BOOKS_LOCAL ? { query: st.q, pageSize: 8, txnId: id } : { query: st.q, pageSize: 8 });
+    st.results = (p.threads || []).map(th => { const m = (th.messages || [])[0] || {}; return { id: m.id, url: m.viewUrl || th.viewUrl, subject: m.subject, from: m.sender, date: m.date, snippet: P.squash(P.htmlToText(m.snippet || '')), ai: !!m.ai, reason: m.reason || '' }; });
   } catch (e) { st.error = gmailErr(e); }
   st.loading = false; schedule();
 }
@@ -963,6 +999,7 @@ document.addEventListener('click', async ev => {
   if (act === 'dismiss-sync') { S.syncMsg = null; return schedule(); }
   if (act === 'entity') { S.entity = v; return schedule(); }
   if (act === 'rfilter') { S.reviewFilter = v; return schedule(); }
+  if (act === 'use-suggest') { const t = S.txns.get(id); const d = draftFor(t); d.kind = t.suggest.kind; d.cat = t.suggest.cat || ''; return schedule(); }
   if (act === 'kind') { const t = S.txns.get(id); draftFor(t).kind = v; return schedule(); }
   if (act === 'save') return saveTxn(id);
   if (act === 'open-txn') { S.editing = id; location.hash = '#ledger'; return window.scrollTo({ top: 0 }); }
@@ -982,7 +1019,8 @@ document.addEventListener('click', async ev => {
   if (act === 'inv-remove') { const t = S.txns.get(id); const items = (t.inv.items || []).filter((_, i) => i !== +v); return setInv(id, { state: items.length ? 'attached' : 'missing', items }); }
   if (act === 'export') return exportCsv();
   if (act === 'reconcile') return reconcile();
-  if (act === 'st-clear') { Object.assign(S.stmt, { rows: null, map: null, parsed: null, error: null, result: null }); const f = $('#st-file'); if (f) f.value = ''; return schedule(); }
+  if (act === 'pdf-read') return readPdfStatement();
+  if (act === 'st-clear') { Object.assign(S.stmt, { rows: null, map: null, parsed: null, pdf: null, pdfFile: null, error: null, result: null }); const f = $('#st-file'); if (f) f.value = ''; return schedule(); }
   if (act === 'rule-del') { await write(() => S.db.doc('rules/' + id).delete()); return; }
   if (act === 'save-cats') {
     const read = sel => ($(sel).value || '').split('\n').map(s => s.trim()).filter(Boolean);
@@ -1041,7 +1079,7 @@ async function boot() {
   // Auto-sync on open when the last run is older than 30 minutes.
   const wait = Date.now() + 8000;
   while (!S.loaded.txns && Date.now() < wait) await sleep(200);
-  if (!S.sync.lastRun || Date.now() - S.sync.lastRun > 30 * 60000) runSync();
+  if (!window.BOOKS_LOCAL && (!S.sync.lastRun || Date.now() - S.sync.lastRun > 30 * 60000)) runSync();
 }
 render();
 boot();

@@ -3,7 +3,18 @@
   "private": true,
   "type": "commonjs",
   "scripts": {
-    "test": "node --test test/*.test.js",
-    "build": "node build.js"
+    "start": "node --disable-warning=ExperimentalWarning local/server.js",
+    "setup": "node --disable-warning=ExperimentalWarning local/setup.js",
+    "test": "node --disable-warning=ExperimentalWarning --test test/*.test.js",
+    "build": "node build.js",
+    "install-service": "node local/service.js"
+  },
+  "description": "Bank ledger for CodeCrust and AITA: Gmail alerts, Telegram, local dashboard",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "dependencies": {
+    "imapflow": "2.3.0",
+    "pdfjs-dist": "4.10.38"
   }
 }
