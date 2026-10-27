@@ -1,0 +1,867 @@
+<title>Books</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Bricolage+Grotesque:opsz,wght@12..96,700&display=swap">
+<style>
+/* Layout: one working column. Sticky bar (entity + sync), tab strip, then the active view.
+   Money in = blue, money out = orange (validated CVD-safe pair); everything else is ink on cool paper. */
+:root {
+  --bg: #F1F4F3; --surface: #FBFCFB; --sunk: #E8EDEB; --ink: #15201D; --ink2: #44524E; --muted: #6E7C78;
+  --line: #D6DEDB; --accent: #0E5C4E; --accent-ink: #FFFFFF; --accent-soft: #D7EBE5;
+  --in: #2F6BD0; --out: #D2761F; --warn: #9A5B00; --warn-soft: #FBEBD0; --crit: #B42318; --crit-soft: #FBE1DE; --good: #1D6B45; --good-soft: #DAF0E3;
+  --f-body: "Figtree", "Segoe UI", system-ui, sans-serif;
+  --f-num: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --f-display: "Bricolage Grotesque", "Figtree", system-ui, sans-serif;
+  --r: 10px;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0D1211; --surface: #141A19; --sunk: #1B2321; --ink: #E5ECE9; --ink2: #B2BEBA; --muted: #84928E;
+  --line: #29332F; --accent: #5CC2A8; --accent-ink: #06201A; --accent-soft: #173A32;
+  --in: #4F86E0; --out: #CF7A2E; --warn: #E8B45C; --warn-soft: #3A2C12; --crit: #F28B82; --crit-soft: #3D1C19; --good: #6FCF97; --good-soft: #15342A;
+  color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0D1211; --surface: #141A19; --sunk: #1B2321; --ink: #E5ECE9; --ink2: #B2BEBA; --muted: #84928E;
+  --line: #29332F; --accent: #5CC2A8; --accent-ink: #06201A; --accent-soft: #173A32;
+  --in: #4F86E0; --out: #CF7A2E; --warn: #E8B45C; --warn-soft: #3A2C12; --crit: #F28B82; --crit-soft: #3D1C19; --good: #6FCF97; --good-soft: #15342A;
+  color-scheme: dark; }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.5 var(--f-body); }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--surface); }
+.wrap { max-width: 1040px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+header.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--surface); border-bottom: 1px solid var(--line); }
+.top .wrap { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding-block: 10px; }
+.brand { font: 700 22px/1 var(--f-display); letter-spacing: -0.01em; margin-right: auto; }
+.brand small { font: 500 11px var(--f-body); color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; margin-left: 8px; }
+.seg { display: inline-flex; background: var(--sunk); border-radius: 999px; padding: 3px; gap: 2px; }
+.seg button { border: 0; background: transparent; color: var(--ink2); font: 600 13px var(--f-body); padding: 6px 12px; border-radius: 999px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgb(0 0 0 / 0.12); }
+.syncbox { display: flex; align-items: center; gap: 10px; }
+.synced { font-size: 12px; color: var(--muted); }
+nav.tabs { display: flex; gap: 4px; overflow-x: auto; padding-block: 6px 0; }
+nav.tabs a { color: var(--ink2); text-decoration: none; font-weight: 600; font-size: 14px; padding: 8px 12px; border-bottom: 2px solid transparent; white-space: nowrap; display: inline-flex; gap: 6px; align-items: center; }
+nav.tabs a[aria-current="page"] { color: var(--ink); border-color: var(--accent); }
+.count { font: 600 11px var(--f-num); background: var(--accent); color: var(--accent-ink); border-radius: 999px; padding: 1px 7px; }
+main { padding-block: 18px 64px; display: grid; gap: 16px; }
+h2 { font: 700 20px/1.2 var(--f-display); margin: 0; text-wrap: balance; }
+h3 { font-size: 15px; margin: 0; }
+p { margin: 0; }
+a { color: var(--accent); }
+.muted { color: var(--muted); }
+.small { font-size: 13px; }
+.num { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
+button, .btn { font: 600 14px var(--f-body); border-radius: 8px; padding: 8px 14px; cursor: pointer; border: 1px solid var(--line); background: var(--surface); color: var(--ink); text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+button.ghost { background: transparent; border-color: transparent; color: var(--accent); padding-inline: 6px; }
+button:disabled { opacity: 0.55; cursor: default; }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+input, select, textarea { font: 14px var(--f-body); color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; max-width: 100%; }
+textarea { width: 100%; min-height: 120px; font-family: var(--f-num); font-size: 13px; }
+.status { border-radius: var(--r); padding: 10px 14px; font-size: 14px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.status.info { background: var(--accent-soft); }
+.status.warn { background: var(--warn-soft); }
+.status.crit { background: var(--crit-soft); }
+.bar-progress { height: 4px; background: var(--sunk); border-radius: 4px; overflow: hidden; flex: 1 1 140px; }
+.bar-progress i { display: block; height: 100%; background: var(--accent); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { border: 1px solid var(--line); background: var(--surface); color: var(--ink2); border-radius: 999px; padding: 5px 12px; font: 600 13px var(--f-body); cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+.tag { display: inline-block; font: 600 11px/1.6 var(--f-body); letter-spacing: 0.04em; text-transform: uppercase; padding: 0 7px; border-radius: 4px; background: var(--sunk); color: var(--ink2); }
+.tag.warn { background: var(--warn-soft); color: var(--warn); }
+.tag.crit { background: var(--crit-soft); color: var(--crit); }
+.tag.good { background: var(--good-soft); color: var(--good); }
+.list { display: grid; gap: 10px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 14px 16px; display: grid; gap: 10px; }
+.card .r1 { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
+.card .meta { font-size: 12px; color: var(--muted); letter-spacing: 0.02em; }
+.who { font-weight: 600; font-size: 16px; min-width: 0; overflow-wrap: anywhere; }
+.who .sub { font-weight: 400; font-size: 13px; color: var(--muted); display: block; }
+.amt { font: 600 18px var(--f-num); font-variant-numeric: tabular-nums; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: none; }
+.dot.in { background: var(--in); } .dot.out { background: var(--out); }
+.kinds { display: flex; flex-wrap: wrap; gap: 6px; }
+.fields { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.fields input[type=text] { flex: 1 1 220px; }
+.check { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; color: var(--ink2); }
+.inv { border-top: 1px dashed var(--line); padding-top: 10px; display: grid; gap: 8px; }
+.inv .head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.inv .head .label { font-size: 13px; font-weight: 600; margin-right: auto; }
+.att { display: flex; gap: 8px; align-items: center; font-size: 13px; background: var(--sunk); border-radius: 8px; padding: 6px 10px; min-width: 0; }
+.att a { color: var(--accent); overflow-wrap: anywhere; }
+.results { display: grid; gap: 6px; }
+.res { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; font-size: 13px; }
+.res .s { font-weight: 600; overflow-wrap: anywhere; min-width: 0; }
+.res .f { color: var(--muted); grid-column: 1; overflow-wrap: anywhere; }
+.res button { grid-row: 1 / span 2; grid-column: 2; align-self: center; }
+.qrow { display: flex; gap: 6px; flex-wrap: wrap; }
+.qrow input { flex: 1 1 260px; font-family: var(--f-num); font-size: 12px; }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.err { color: var(--crit); font-size: 13px; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; display: grid; gap: 12px; min-width: 0; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+.tile { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px; }
+.tile .k { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; display: flex; gap: 6px; align-items: center; }
+.tile .v { font: 600 22px var(--f-num); font-variant-numeric: tabular-nums; margin-top: 4px; }
+.tablewrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th { text-align: left; font-weight: 600; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+td { padding: 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+td.r, th.r { text-align: right; }
+tr.click { cursor: pointer; }
+tr.click:hover td { background: var(--sunk); }
+.party { max-width: 280px; overflow-wrap: anywhere; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.toolbar .grow { flex: 1 1 200px; }
+.health { display: grid; gap: 6px; }
+.health li { display: flex; gap: 10px; align-items: center; }
+ul.plain { list-style: none; padding: 0; margin: 0; }
+.chart { position: relative; }
+.chart svg { display: block; width: 100%; height: auto; }
+.legend { display: flex; gap: 14px; font-size: 13px; color: var(--ink2); }
+.legend span { display: inline-flex; gap: 6px; align-items: center; }
+.tip { position: absolute; pointer-events: none; background: var(--ink); color: var(--bg); font-size: 12px; padding: 6px 8px; border-radius: 6px; white-space: nowrap; transform: translate(-50%, calc(-100% - 8px)); }
+.empty { text-align: center; padding: 36px 16px; display: grid; gap: 10px; justify-items: center; }
+.empty h2 { font-size: 18px; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+.preview td { font-size: 12px; }
+@media (max-width: 560px) { .amt { font-size: 16px; } .brand small { display: none; } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+
+<header class="top">
+  <div class="wrap">
+    <div class="brand">Books<small>CodeCrust · AITA</small></div>
+    <div class="seg" id="entity-seg" role="group" aria-label="Company"></div>
+    <div class="syncbox"><span class="synced" id="synced"></span><button class="primary" id="sync-btn" data-act="sync">Sync Gmail</button></div>
+  </div>
+  <div class="wrap"><nav class="tabs" id="tabs" aria-label="Views"></nav></div>
+</header>
+<div class="wrap"><main id="main"></main></div>
+<script>/*@@PARSER@@*/</script>
+<script>
+'use strict';
+const P = window.BankParse;
+const ENTITIES = { codecrust: 'CodeCrust', aita: 'AITA Technologies' };
+const SENDERS = ['alerts@hdfcbank.bank.in', 'alerts@hdfcbank.net', 'indusind_bank@indusind.com'];
+const GMAIL = 'Gmail';
+const BANKS = { hdfc: 'HDFC', indusind: 'IndusInd', other: 'Bank' };
+const DEFAULT_SINCE = '2026-04-01';
+const CATS_OUT = ['Salaries & contractors', 'Software & subscriptions', 'Cloud & hosting', 'Rent & office', 'Internet & phone', 'Travel', 'Meals & entertainment', 'Office supplies & equipment', 'Professional fees (CA, legal)', 'Marketing & ads', 'Bank charges', 'GST paid', 'TDS / income tax', 'Loan repayment / EMI', 'Other expense'];
+const CATS_IN = ['Client revenue (India)', 'Export revenue (foreign)', 'Interest income', 'Refund received', 'Capital introduced', 'Loan received', 'Other income'];
+const KINDS = {
+  business: { out: 'Business expense', in: 'Business income' },
+  intercompany: { out: 'Inter-company', in: 'Inter-company' },
+  transfer: { out: 'Own transfer', in: 'Own transfer' },
+  personal: { out: 'Personal', in: 'Personal' },
+};
+const VIEWS = [['review', 'To do'], ['ledger', 'Ledger'], ['summary', 'Summary'], ['statements', 'Statements'], ['setup', 'Setup']];
+
+const S = {
+  db: null, mcp: null, assets: null, dl: null, dbState: 'loading',
+  txns: new Map(), accounts: new Map(), rules: new Map(), statements: new Map(),
+  settings: {}, sync: {}, seen: [],
+  view: 'review', entity: 'all', reviewFilter: 'label',
+  draft: {}, inv: {}, editing: null, busy: {},
+  syncing: null, syncMsg: null,
+  ledger: { month: 'all', q: '', kind: 'all' },
+  fy: null, stmt: { acct: null, file: null, rows: null, map: null, parsed: null, result: null, error: null },
+  loaded: { txns: false, accounts: false },
+};
+
+// ---------- helpers ----------
+const $ = s => document.querySelector(s);
+const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const money = (p, dir) => (dir === 'out' ? '−' : dir === 'in' ? '+' : '') + P.fmtINR(Math.abs(p || 0)).replace('-', '−');
+const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const dShort = d => d ? `${+d.slice(8, 10)} ${MON[+d.slice(5, 7) - 1]}` : '';
+const dLong = d => d ? `${+d.slice(8, 10)} ${MON[+d.slice(5, 7) - 1]} ${d.slice(0, 4)}` : '';
+const monthLabel = m => `${MON[+m.slice(5, 7) - 1]} ${m.slice(0, 4)}`;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const docId = s => String(s).replace(/[^A-Za-z0-9_.~:@+-]/g, '_').slice(0, 190);
+const ago = ms => { if (!ms) return 'never'; const m = Math.round((Date.now() - ms) / 60000); if (m < 1) return 'just now'; if (m < 60) return m + ' min ago'; const h = Math.round(m / 60); if (h < 36) return h + ' h ago'; return Math.round(h / 24) + ' days ago'; };
+const acctName = id => { const a = S.accounts.get(id); return a ? `${BANKS[a.bank] || a.bank} ••${a.last4}` : id; };
+const entityOf = t => (S.accounts.get(t.acct) || {}).entity || null;
+const tracked = t => !!ENTITIES[entityOf(t)];
+const inScope = t => tracked(t) && (S.entity === 'all' || entityOf(t) === S.entity);
+const catsOut = () => (S.settings.catsOut && S.settings.catsOut.length ? S.settings.catsOut : CATS_OUT);
+const catsIn = () => (S.settings.catsIn && S.settings.catsIn.length ? S.settings.catsIn : CATS_IN);
+const needsInvoice = t => t.status === 'done' && t.kind === 'business' && t.dir === 'out' && (!t.inv || t.inv.state === 'missing');
+function fyOf(d) { const y = +d.slice(0, 4), m = +d.slice(5, 7); return m >= 4 ? y : y - 1; }
+
+async function write(fn) {
+  try { return await fn(); }
+  catch (e) {
+    if (e && (e.code === 'unavailable' || e.code === 'resource_exhausted')) { await sleep(1200 + Math.random() * 800); return fn(); }
+    throw e;
+  }
+}
+const setDoc = (path, data) => write(() => S.db.doc(path).set(data));
+const updDoc = (path, data) => write(() => S.db.doc(path).update(data));
+
+// ---------- render loop ----------
+let queued = false;
+function schedule() { if (queued) return; queued = true; requestAnimationFrame(() => { queued = false; render(); }); }
+
+function render() {
+  const a = document.activeElement;
+  const fid = a && a.id && a.closest('main') ? a.id : null;
+  let sel = null; try { sel = fid && a.selectionStart != null ? [a.selectionStart, a.selectionEnd] : null; } catch (_) {}
+  $('#entity-seg').innerHTML = [['all', 'Both'], ['codecrust', 'CodeCrust'], ['aita', 'AITA']].map(([k, l]) =>
+    `<button data-act="entity" data-v="${k}" aria-pressed="${S.entity === k}">${l}</button>`).join('');
+  const todo = reviewCounts();
+  $('#tabs').innerHTML = VIEWS.map(([k, l]) => `<a href="#${k}" ${S.view === k ? 'aria-current="page"' : ''}>${l}${k === 'review' && todo.total ? ` <span class="count">${todo.total}</span>` : ''}</a>`).join('');
+  $('#synced').textContent = S.syncing ? 'Syncing…' : S.sync.lastRun ? 'Synced ' + ago(S.sync.lastRun) : '';
+  const btn = $('#sync-btn'); btn.disabled = !!S.syncing || !S.mcp || !S.db; btn.textContent = S.syncing ? 'Syncing…' : 'Sync Gmail';
+  let html = syncBanner();
+  if (S.dbState === 'none') html += `<div class="panel empty"><h2>Open Books in claude.ai</h2><p class="muted">Your ledger is stored with this page on claude.ai, so it only loads there.</p></div>`;
+  else if (S.view === 'review') html += viewReview();
+  else if (S.view === 'ledger') html += viewLedger();
+  else if (S.view === 'summary') html += viewSummary();
+  else if (S.view === 'statements') html += viewStatements();
+  else html += viewSetup();
+  $('#main').innerHTML = html;
+  if (S.view === 'summary') wireChart();
+  if (fid) { const el = document.getElementById(fid); if (el) { el.focus(); if (sel) try { el.setSelectionRange(sel[0], sel[1]); } catch (_) {} } }
+}
+
+function syncBanner() {
+  if (S.syncing) {
+    const s = S.syncing; const pct = s.total ? Math.round(100 * s.done / s.total) : 0;
+    return `<div class="status info" role="status"><span>${esc(s.phase)}${s.total ? ` · ${s.done} of ${s.total}` : ''}</span><span class="bar-progress"><i style="width:${pct}%"></i></span></div>`;
+  }
+  if (S.syncMsg) return `<div class="status ${S.syncMsg.tone}" role="status"><span>${S.syncMsg.html}</span><button class="ghost" data-act="dismiss-sync">Dismiss</button></div>`;
+  return '';
+}
+
+// ---------- review ----------
+function reviewCounts() {
+  let label = 0, invoice = 0, stmt = 0;
+  for (const t of S.txns.values()) {
+    if (!inScope(t)) continue;
+    if (t.status === 'todo') label++;
+    else if (needsInvoice(t)) invoice++;
+    if (t.recon === 'missing_in_stmt') stmt++;
+  }
+  return { label, invoice, stmt, total: label + invoice };
+}
+
+function balanceGapList() {
+  const out = [];
+  const byAcct = {};
+  for (const t of S.txns.values()) if (inScope(t) && t.balPaise != null && t.ts) (byAcct[t.acct] = byAcct[t.acct] || []).push(t);
+  for (const [acct, list] of Object.entries(byAcct)) for (const g of P.balanceGaps(list)) out.push({ acct, ...g });
+  return out.filter(g => !(S.settings.ackGaps || []).includes(`${g.after}>${g.before}`));
+}
+
+function viewReview() {
+  const c = reviewCounts();
+  const unassigned = [...S.accounts.values()].filter(a => !a.entity);
+  let h = '';
+  for (const a of unassigned) {
+    h += `<div class="status warn"><span><b>New account in your alerts: ${esc(BANKS[a.bank] || a.bank)} ••${esc(a.last4)}.</b> Whose is it?</span>
+      <span class="chips">${Object.entries(ENTITIES).map(([k, l]) => `<button class="chip" data-act="assign" data-acct="${esc(a.id)}" data-v="${k}">${l}</button>`).join('')}
+      <button class="chip" data-act="assign" data-acct="${esc(a.id)}" data-v="ignore">Don't track</button></span></div>`;
+  }
+  if (!S.loaded.txns) return h + `<div class="panel empty"><p class="muted">Loading your books…</p></div>`;
+  const anyTracked = [...S.txns.values()].some(tracked);
+  if (!anyTracked) {
+    return h + `<div class="panel empty"><h2>No transactions yet</h2><p class="muted">Sync Gmail to read HDFC and IndusInd alert emails from ${dLong(S.settings.since || DEFAULT_SINCE)} onward. Each one lands here for you to label.</p>
+      <button class="primary" data-act="sync" ${S.mcp ? '' : 'disabled'}>Sync Gmail</button>${S.mcp ? '' : '<p class="small muted">Waiting for Gmail access…</p>'}</div>`;
+  }
+  const gaps = balanceGapList();
+  const filters = [['label', `To label`, c.label], ['invoice', 'Invoice missing', c.invoice], ['stmt', 'Not on statement', c.stmt], ['gaps', 'Balance gaps', gaps.length]];
+  if (!filters.some(f => f[0] === S.reviewFilter && f[2]) && filters.some(f => f[2])) S.reviewFilter = filters.find(f => f[2])[0];
+  h += `<div class="toolbar"><h2 class="grow">${c.total ? `${c.total} item${c.total === 1 ? '' : 's'} need you` : 'All caught up'}</h2></div>
+    <div class="chips" role="group" aria-label="Filter">${filters.map(([k, l, n]) => `<button class="chip" data-act="rfilter" data-v="${k}" aria-pressed="${S.reviewFilter === k}">${l} · ${n}</button>`).join('')}</div>`;
+  if (S.reviewFilter === 'gaps') {
+    if (!gaps.length) return h + `<div class="panel empty"><p class="muted">IndusInd alerts include the balance after each transaction. Every balance so far follows from the one before it, so no transaction is missing.</p></div>`;
+    return h + `<div class="list">${gaps.map(g => `<div class="card"><div class="r1"><div class="who">${acctName(g.acct)}: ${money(Math.abs(g.missingPaise), g.missingPaise < 0 ? 'out' : 'in')} unaccounted
+      <span class="sub">Between ${dLong(g.from)} and ${dLong(g.to)} the balance moved by more than the alerts explain. A transaction without an email alert happened in between (often a charge, cheque or NEFT). Import that month's statement to fill it in.</span></div></div>
+      <div class="actions"><button data-act="ack-gap" data-v="${esc(g.after + '>' + g.before)}">Mark as explained</button></div></div>`).join('')}</div>`;
+  }
+  const list = [...S.txns.values()].filter(inScope).filter(t =>
+    S.reviewFilter === 'label' ? t.status === 'todo' : S.reviewFilter === 'invoice' ? needsInvoice(t) : t.recon === 'missing_in_stmt'
+  ).sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.ts || 0) - (a.ts || 0));
+  if (!list.length) return h + `<div class="panel empty"><p class="muted">Nothing here.</p></div>`;
+  const shown = list.slice(0, 40);
+  return h + `<div class="list">${shown.map(t => card(t)).join('')}</div>${list.length > shown.length ? `<p class="muted small">Showing the newest 40 of ${list.length}. Save a few to load more.</p>` : ''}`;
+}
+
+function draftFor(t) {
+  if (!S.draft[t.id]) S.draft[t.id] = { kind: t.kind || null, cat: t.cat || '', note: t.note || '', remember: false };
+  return S.draft[t.id];
+}
+
+function card(t, opts = {}) {
+  const d = draftFor(t);
+  const ent = ENTITIES[entityOf(t)] || 'Unassigned';
+  const sub = [t.vpa, t.mode && t.ref ? `${t.mode} ${t.ref}` : t.ref, t.narr && !t.vpa ? t.narr : null].filter(Boolean).map(esc).join(' · ');
+  const tags = [];
+  if (t.recon === 'stmt_only') tags.push('<span class="tag warn">No alert · from statement</span>');
+  if (t.recon === 'missing_in_stmt') tags.push('<span class="tag crit">Not on statement</span>');
+  if (t.recon === 'matched') tags.push('<span class="tag good">On statement</span>');
+  if (t.auto) tags.push('<span class="tag">Auto-labelled</span>');
+  if (t.pairId) tags.push('<span class="tag">Matched pair</span>');
+  const kindBtns = Object.keys(KINDS).map(k => `<button class="chip" data-act="kind" data-id="${esc(t.id)}" data-v="${k}" aria-pressed="${d.kind === k}">${KINDS[k][t.dir]}</button>`).join('');
+  const cats = t.dir === 'out' ? catsOut() : catsIn();
+  const catSel = d.kind === 'business' ? `<select id="cat-${esc(t.id)}" data-field="cat" data-id="${esc(t.id)}" aria-label="Category"><option value="">Category…</option>${cats.map(c => `<option ${d.cat === c ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select>` : '';
+  const pk = P.partyKey(t);
+  const err = S.busy['err-' + t.id];
+  const mailLink = (t.mails || []).find(m => m.url);
+  return `<article class="card" id="card-${esc(t.id)}">
+    <div class="r1"><div class="meta">${dLong(t.date)} · ${esc(acctName(t.acct))} · ${esc(ent)}</div>
+      <div class="amt"><span class="dot ${t.dir}"></span><span class="num">${money(t.paise, t.dir)}</span></div></div>
+    <div class="who">${esc(t.party || t.vpa || t.stmtNarr || t.narr || 'Unknown payee')}${sub && (t.party || t.vpa) ? `<span class="sub">${sub}</span>` : ''}</div>
+    ${tags.length ? `<div class="chips">${tags.join('')}</div>` : ''}
+    <div class="kinds" role="group" aria-label="What is this">${kindBtns}</div>
+    <div class="fields">${catSel}
+      <input type="text" id="note-${esc(t.id)}" data-field="note" data-id="${esc(t.id)}" value="${esc(d.note)}" placeholder="What was it for? (client, project, item)" aria-label="Note">
+      ${pk ? `<label class="check"><input type="checkbox" id="rem-${esc(t.id)}" data-field="remember" data-id="${esc(t.id)}" ${d.remember ? 'checked' : ''}> Same for future ${esc(t.party || t.vpa)}</label>` : ''}
+    </div>
+    ${invoiceBlock(t, d)}
+    <div class="actions"><button class="primary" data-act="save" data-id="${esc(t.id)}" ${S.busy[t.id] ? 'disabled' : ''}>${t.status === 'done' ? 'Update' : 'Save'}</button>
+      ${opts.close ? `<button data-act="close-edit">Close</button>` : ''}
+      ${mailLink ? `<a class="btn ghost" href="${esc(mailLink.url)}" target="_blank" rel="noopener">Alert email ↗</a>` : ''}
+      ${err ? `<span class="err">${esc(err)}</span>` : ''}</div>
+  </article>`;
+}
+
+function invoiceBlock(t, d) {
+  const kind = d.kind || t.kind;
+  if (kind !== 'business') return '';
+  const inv = t.inv || { state: 'missing', items: [] };
+  const st = S.inv[t.id] || {};
+  const need = t.dir === 'out';
+  const label = need ? (inv.state === 'attached' ? 'Invoice attached' : inv.state === 'not_needed' ? 'No invoice needed' : 'Invoice or bill needed') : (inv.state === 'attached' ? 'Invoice attached' : 'Your invoice to the client (optional)');
+  const items = (inv.items || []).map((it, i) => `<div class="att">${it.type === 'gmail'
+      ? `<span>✉</span><a href="${esc(it.url)}" target="_blank" rel="noopener">${esc(it.subject || '(no subject)')}</a><span class="muted">${esc(it.from || '')}</span>`
+      : `<span>📎</span><a href="/_blob/${esc(it.id)}" target="_blank" rel="noopener">${esc(it.name || 'file')}</a>`}
+      <button class="ghost" data-act="inv-remove" data-id="${esc(t.id)}" data-v="${i}" aria-label="Remove">Remove</button></div>`).join('');
+  let res = '';
+  if (st.open) {
+    res = `<div class="qrow"><input type="text" id="invq-${esc(t.id)}" data-field="invq" data-id="${esc(t.id)}" value="${esc(st.q || '')}" aria-label="Gmail search">
+      <button data-act="inv-search" data-id="${esc(t.id)}" ${st.loading ? 'disabled' : ''}>${st.loading ? 'Searching…' : 'Search'}</button>
+      <button class="ghost" data-act="inv-mode" data-id="${esc(t.id)}">${st.mode === 'party' ? 'Search by amount' : 'Search by payee name'}</button></div>`;
+    if (st.error) res += `<p class="err">${esc(st.error)}</p>`;
+    else if (st.results && !st.results.length) res += `<p class="small muted">No matching emails between a week before and four days after the payment. Try the payee name, or upload the bill.</p>`;
+    else if (st.results) res += `<div class="results">${st.results.map((r, i) => `<div class="res"><span class="s">${esc(r.subject || '(no subject)')}</span>
+      <span class="f">${esc(r.from)} · ${esc(r.date ? dShort(r.date.slice(0, 10)) : '')}${r.snippet ? ' · ' + esc(r.snippet.slice(0, 110)) : ''}</span>
+      <button data-act="inv-attach" data-id="${esc(t.id)}" data-v="${i}">Attach</button></div>`).join('')}</div>`;
+  }
+  return `<div class="inv"><div class="head"><span class="label">${label}</span>
+      <button data-act="inv-find" data-id="${esc(t.id)}" ${S.mcp ? '' : 'disabled'}>Find in Gmail</button>
+      ${S.assets ? `<label class="btn" for="up-${esc(t.id)}">Upload</label><input type="file" id="up-${esc(t.id)}" data-field="upload" data-id="${esc(t.id)}" accept="application/pdf,image/png,image/jpeg,image/webp" hidden>` : ''}
+      ${need && inv.state !== 'not_needed' && !(inv.items || []).length ? `<button class="ghost" data-act="inv-none" data-id="${esc(t.id)}">Not needed</button>` : ''}
+    </div>${items}${res}</div>`;
+}
+
+// ---------- ledger ----------
+function ledgerRows() {
+  const L = S.ledger;
+  const q = L.q.trim().toLowerCase();
+  return [...S.txns.values()].filter(inScope).filter(t =>
+    (L.month === 'all' || (t.date || '').startsWith(L.month)) &&
+    (L.kind === 'all' || (L.kind === 'todo' ? t.status === 'todo' : t.kind === L.kind)) &&
+    (!q || [t.party, t.vpa, t.narr, t.cat, t.note, t.ref].join(' ').toLowerCase().includes(q))
+  ).sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.ts || 0) - (a.ts || 0));
+}
+
+function viewLedger() {
+  const months = [...new Set([...S.txns.values()].filter(inScope).map(t => (t.date || '').slice(0, 7)))].filter(Boolean).sort().reverse();
+  const rows = ledgerRows();
+  let inP = 0, outP = 0; rows.forEach(t => { if (t.dir === 'in') inP += t.paise; else outP += t.paise; });
+  const edit = S.editing && S.txns.get(S.editing);
+  return `${edit ? card(edit, { close: true }) : ''}
+  <div class="toolbar">
+    <select id="lg-month" data-field="lg-month" aria-label="Month"><option value="all">All months</option>${months.map(m => `<option value="${m}" ${S.ledger.month === m ? 'selected' : ''}>${monthLabel(m)}</option>`).join('')}</select>
+    <select id="lg-kind" data-field="lg-kind" aria-label="Type"><option value="all">All types</option><option value="todo" ${S.ledger.kind === 'todo' ? 'selected' : ''}>Not labelled</option>${Object.keys(KINDS).map(k => `<option value="${k}" ${S.ledger.kind === k ? 'selected' : ''}>${KINDS[k].out.replace(' expense', '')}</option>`).join('')}</select>
+    <input type="text" class="grow" id="lg-q" data-field="lg-q" value="${esc(S.ledger.q)}" placeholder="Search payee, note, reference" aria-label="Search">
+    <button data-act="export" ${S.dl && rows.length ? '' : 'disabled'}>Export CSV</button>
+  </div>
+  <p class="small muted"><span class="num">${rows.length}</span> transactions · in <span class="num">${P.fmtINR(inP)}</span> · out <span class="num">${P.fmtINR(outP)}</span></p>
+  <div class="panel tablewrap" style="padding:0">${rows.length ? `<table><thead><tr><th>Date</th><th>Account</th><th>Payee / payer</th><th>Category</th><th class="r">In</th><th class="r">Out</th><th>Invoice</th><th>Statement</th></tr></thead><tbody>
+    ${rows.slice(0, 500).map(t => `<tr class="click" data-act="edit" data-id="${esc(t.id)}" tabindex="0">
+      <td class="num">${dShort(t.date)}</td><td>${esc(acctName(t.acct))}</td>
+      <td class="party">${esc(t.party || t.vpa || t.narr || '')}${t.note ? `<div class="muted small">${esc(t.note)}</div>` : ''}</td>
+      <td>${t.status === 'todo' ? '<span class="tag warn">To label</span>' : esc(t.kind === 'business' ? t.cat || '—' : KINDS[t.kind] ? KINDS[t.kind][t.dir] : '—')}</td>
+      <td class="r num">${t.dir === 'in' ? P.fmtINR(t.paise) : ''}</td><td class="r num">${t.dir === 'out' ? P.fmtINR(t.paise) : ''}</td>
+      <td>${t.inv && t.inv.state === 'attached' ? '<span class="tag good">Yes</span>' : needsInvoice(t) ? '<span class="tag crit">Missing</span>' : t.inv && t.inv.state === 'not_needed' ? '<span class="tag">n/a</span>' : ''}</td>
+      <td>${t.recon === 'matched' ? '<span class="tag good">Matched</span>' : t.recon === 'stmt_only' ? '<span class="tag warn">Stmt only</span>' : t.recon === 'missing_in_stmt' ? '<span class="tag crit">Missing</span>' : '<span class="muted small">Pending</span>'}</td></tr>`).join('')}
+  </tbody></table>${rows.length > 500 ? `<p class="small muted" style="padding:8px">Showing 500 of ${rows.length}. Narrow by month.</p>` : ''}` : `<div class="empty"><p class="muted">No transactions match.</p></div>`}</div>`;
+}
+
+function exportCsv() {
+  const rows = ledgerRows().slice().reverse();
+  const head = ['Date', 'Company', 'Bank account', 'Direction', 'Amount', 'Payee/payer', 'UPI/VPA', 'Mode', 'Reference', 'Type', 'Category', 'Note', 'Invoice', 'Invoice links', 'Statement', 'Bank narration'];
+  const q = v => { const s = String(v == null ? '' : v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+  const lines = [head.join(',')].concat(rows.map(t => [t.date, ENTITIES[entityOf(t)], acctName(t.acct), t.dir === 'in' ? 'In' : 'Out', (t.paise / 100).toFixed(2), t.party, t.vpa, t.mode, t.ref,
+    t.kind ? KINDS[t.kind][t.dir] : 'Not labelled', t.cat, t.note, t.inv ? t.inv.state : '', (t.inv && t.inv.items || []).map(i => i.url || i.name).join(' | '), t.recon || 'pending', t.stmtNarr || t.narr].map(q).join(',')));
+  const name = `books-${S.entity === 'all' ? 'both' : S.entity}-${S.ledger.month === 'all' ? 'all' : S.ledger.month}.csv`;
+  S.dl.save({ filename: name, data: lines.join('\n') }).catch(e => { if (e && e.code !== 'cancelled') flash('crit', 'Could not save the file: ' + esc(e.message || e.code)); });
+}
+
+// ---------- summary ----------
+function viewSummary() {
+  const all = [...S.txns.values()].filter(inScope).filter(t => t.date);
+  if (!all.length) return `<div class="panel empty"><h2>Nothing to summarise yet</h2><p class="muted">Sync Gmail first.</p></div>`;
+  const fys = [...new Set(all.map(t => fyOf(t.date)))].sort().reverse();
+  if (!S.fy || !fys.includes(S.fy)) S.fy = fys[0];
+  const list = all.filter(t => fyOf(t.date) === S.fy);
+  const both = S.entity === 'all';
+  const counted = t => t.kind !== 'transfer' && !(both && t.kind === 'intercompany');
+  let inP = 0, outP = 0, pers = 0, ic = 0;
+  const months = []; for (let i = 0; i < 12; i++) { const m = i + 4 > 12 ? i - 8 : i + 4; const y = m < 4 ? S.fy + 1 : S.fy; months.push({ key: `${y}-${String(m).padStart(2, '0')}`, in: 0, out: 0 }); }
+  const byCat = {};
+  for (const t of list) {
+    if (!counted(t)) continue;
+    const mo = months.find(m => t.date.startsWith(m.key));
+    if (t.dir === 'in') { inP += t.paise; if (mo) mo.in += t.paise; } else { outP += t.paise; if (mo) mo.out += t.paise; }
+    if (t.kind === 'personal' && t.dir === 'out') pers += t.paise;
+    if (t.kind === 'intercompany') ic += t.dir === 'in' ? t.paise : -t.paise;
+    if (t.dir === 'out') {
+      const k = t.status === 'todo' ? 'Not labelled yet' : t.kind === 'business' ? (t.cat || 'Uncategorised') : KINDS[t.kind] ? KINDS[t.kind].out : 'Other';
+      const c = byCat[k] = byCat[k] || { p: 0, n: 0, inv: 0, needInv: 0 }; c.p += t.paise; c.n++;
+      if (t.kind === 'business') { c.needInv += t.inv && t.inv.state === 'not_needed' ? 0 : 1; if (t.inv && t.inv.state === 'attached') c.inv++; }
+    }
+  }
+  S.chart = months;
+  const cats = Object.entries(byCat).sort((a, b) => b[1].p - a[1].p);
+  const cnt = reviewCounts(); const gaps = balanceGapList();
+  const stAccts = [...S.accounts.values()].filter(a => ENTITIES[a.entity] && (both || a.entity === S.entity));
+  const lastMonth = (() => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 1); return d.toISOString().slice(0, 7); })();
+  const noStmt = stAccts.filter(a => ![...S.statements.values()].some(s => s.acct === a.id && s.to >= lastMonth + '-25'));
+  const health = [
+    [cnt.label, 'to label', 'review'], [cnt.invoice, 'business expenses without an invoice', 'review'], [cnt.stmt, 'alerts not found on a statement', 'review'],
+    [gaps.length, 'IndusInd balance gaps (likely missing transactions)', 'review'], [noStmt.length, `account${noStmt.length === 1 ? '' : 's'} without a ${monthLabel(lastMonth)} statement imported`, 'statements'],
+  ];
+  return `<div class="toolbar"><h2 class="grow">${both ? 'Both companies' : ENTITIES[S.entity]} · FY ${S.fy}–${String(S.fy + 1).slice(2)}</h2>
+    <select id="fy" data-field="fy" aria-label="Financial year">${fys.map(y => `<option value="${y}" ${y === S.fy ? 'selected' : ''}>FY ${y}–${String(y + 1).slice(2)}</option>`).join('')}</select></div>
+  <div class="tiles">
+    <div class="tile"><div class="k"><span class="dot in"></span>Money in</div><div class="v">${P.fmtINR(inP)}</div></div>
+    <div class="tile"><div class="k"><span class="dot out"></span>Money out</div><div class="v">${P.fmtINR(outP)}</div></div>
+    <div class="tile"><div class="k">Net</div><div class="v">${P.fmtINR(inP - outP)}</div></div>
+    <div class="tile"><div class="k">Personal spends</div><div class="v">${P.fmtINR(pers)}</div></div>
+  </div>
+  <p class="small muted">Own transfers are left out${both ? ', and so are inter-company transfers, because they cancel out between the two companies' : `. Inter-company net: ${P.fmtINR(ic)}`}. Totals cover bank alerts plus imported statements.</p>
+  <div class="grid2">
+    <div class="panel"><div class="toolbar"><h3 class="grow">Month by month</h3><div class="legend"><span><span class="dot in"></span>In</span><span><span class="dot out"></span>Out</span></div></div>
+      <div class="chart" id="chart">${chartSvg(months)}<div class="tip" id="tip" hidden></div></div></div>
+    <div class="panel"><h3>Needs attention</h3><ul class="plain health">${health.map(([n, l, v]) => `<li><span class="tag ${n ? 'warn' : 'good'} num">${n}</span><a href="#${v}">${l}</a></li>`).join('')}</ul></div>
+  </div>
+  <div class="panel tablewrap"><h3>Where the money went</h3>${cats.length ? `<table><thead><tr><th>Category</th><th class="r">Count</th><th class="r">Amount</th><th class="r">Share</th><th class="r">With invoice</th></tr></thead><tbody>
+    ${cats.map(([k, c]) => `<tr><td>${esc(k)}</td><td class="r num">${c.n}</td><td class="r num">${P.fmtINR(c.p)}</td><td class="r num">${outP ? Math.round(100 * c.p / outP) : 0}%</td><td class="r num">${c.needInv ? `${c.inv} / ${c.needInv}` : '—'}</td></tr>`).join('')}
+  </tbody></table>` : '<p class="muted">No outflows this year.</p>'}</div>`;
+}
+
+function chartSvg(months) {
+  const W = 520, H = 220, L = 56, R = 8, T = 10, B = 26;
+  const max = Math.max(1, ...months.map(m => Math.max(m.in, m.out)));
+  const step = niceStep(max / 4); const top = Math.ceil(max / step) * step;
+  const y = v => T + (H - T - B) * (1 - v / top);
+  const bw = (W - L - R) / months.length; const w = Math.max(3, (bw - 8) / 2);
+  let g = '';
+  for (let v = 0; v <= top + 1; v += step) g += `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" stroke-width="1"/><text x="${L - 6}" y="${y(v) + 4}" text-anchor="end" font-size="10" fill="var(--muted)" font-family="var(--f-num)">${shortINR(v)}</text>`;
+  months.forEach((m, i) => {
+    const x = L + i * bw + 4;
+    const bar = (v, dx, cls) => v ? `<path d="${roundTop(x + dx, y(v), w, y(0) - y(v))}" fill="var(--${cls})"/>` : '';
+    g += bar(m.in, 0, 'in') + bar(m.out, w + 2, 'out');
+    g += `<text x="${x + w + 1}" y="${H - 8}" text-anchor="middle" font-size="10" fill="var(--muted)">${MON[+m.key.slice(5) - 1]}</text>`;
+    g += `<rect x="${L + i * bw}" y="${T}" width="${bw}" height="${H - T - B}" fill="transparent" data-i="${i}" class="hit"/>`;
+  });
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Money in and out by month">${g}</svg>`;
+}
+function roundTop(x, y, w, h) { if (h <= 0) return ''; const r = Math.min(4, w / 2, h); return `M${x},${y + h}V${y + r}Q${x},${y} ${x + r},${y}H${x + w - r}Q${x + w},${y} ${x + w},${y + r}V${y + h}Z`; }
+function niceStep(raw) { const p = Math.pow(10, Math.floor(Math.log10(raw))); const n = raw / p; return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * p; }
+function shortINR(p) { const r = p / 100; if (r >= 1e7) return '₹' + +(r / 1e7).toFixed(1) + 'Cr'; if (r >= 1e5) return '₹' + +(r / 1e5).toFixed(1) + 'L'; if (r >= 1e3) return '₹' + +(r / 1e3).toFixed(0) + 'k'; return '₹' + r; }
+function wireChart() {
+  const box = $('#chart'), tip = $('#tip'); if (!box) return;
+  box.querySelectorAll('.hit').forEach(el => {
+    const show = () => { const m = S.chart[+el.dataset.i]; const r = el.getBoundingClientRect(), b = box.getBoundingClientRect();
+      tip.innerHTML = `<b>${monthLabel(m.key)}</b><br>In ${P.fmtINR(m.in)}<br>Out ${P.fmtINR(m.out)}`; tip.hidden = false;
+      tip.style.left = Math.min(Math.max(60, r.left - b.left + r.width / 2), b.width - 60) + 'px'; tip.style.top = '40px'; };
+    el.addEventListener('mouseenter', show); el.addEventListener('click', show);
+  });
+  box.addEventListener('mouseleave', () => { tip.hidden = true; });
+}
+
+// ---------- statements ----------
+function viewStatements() {
+  const accts = [...S.accounts.values()].filter(a => ENTITIES[a.entity] && (S.entity === 'all' || a.entity === S.entity));
+  if (!accts.length) return `<div class="panel empty"><h2>No accounts yet</h2><p class="muted">Sync Gmail first. Accounts are picked up from the alert emails.</p></div>`;
+  const st = S.stmt; if (!st.acct || !accts.some(a => a.id === st.acct)) st.acct = accts[0].id;
+  const done = [...S.statements.values()].filter(s => s.acct === st.acct).sort((a, b) => (b.to || '').localeCompare(a.to || ''));
+  let imp = `<div class="panel"><h3>Import a statement</h3>
+    <p class="small muted">Download the statement for this account from net banking as Excel (.xls / .xlsx) or CSV, then pick the file here. Books matches every row to your alerts, adds the rows that had no alert, and flags alerts that never reached the bank. PDF statements aren't read yet.</p>
+    <div class="toolbar"><select id="st-acct" data-field="st-acct" aria-label="Account">${accts.map(a => `<option value="${esc(a.id)}" ${a.id === st.acct ? 'selected' : ''}>${esc(acctName(a.id))} · ${ENTITIES[a.entity]}</option>`).join('')}</select>
+    <input type="file" id="st-file" data-field="st-file" accept=".xls,.xlsx,.csv,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"></div>`;
+  if (st.error) imp += `<p class="err">${esc(st.error)}</p>`;
+  if (st.rows && st.map) {
+    const cols = (st.rows[st.map.headerRow] || []).map((c, i) => [i, P.squash(c) || `Column ${i + 1}`]);
+    const sel = (k, label) => `<label class="small">${label}<br><select id="map-${k}" data-field="map" data-v="${k}"><option value="-1">—</option>${cols.map(([i, c]) => `<option value="${i}" ${st.map[k] === i ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select></label>`;
+    const p = st.parsed || []; const tot = P.statementTotals(p);
+    imp += `<div class="fields">${sel('date', 'Date')}${sel('narr', 'Narration')}${sel('debit', 'Withdrawal')}${sel('credit', 'Deposit')}${sel('amount', 'Amount (single column)')}${sel('drcr', 'Dr / Cr')}${sel('balance', 'Balance')}${sel('ref', 'Reference')}</div>
+      <p class="small">${p.length} rows · ${dLong(tot.from)} to ${dLong(tot.to)} · in <span class="num">${P.fmtINR(tot.inPaise)}</span> · out <span class="num">${P.fmtINR(tot.outPaise)}</span>
+      ${tot.balanced === true ? ' · <span class="tag good">Balances add up</span>' : tot.balanced === false ? ' · <span class="tag crit">Balances don\'t add up: check the columns</span>' : ''}</p>
+      <div class="tablewrap preview"><table><thead><tr><th>Date</th><th>Narration</th><th class="r">In</th><th class="r">Out</th><th class="r">Balance</th></tr></thead><tbody>
+      ${p.slice(0, 6).map(r => `<tr><td class="num">${dShort(r.date)}</td><td class="party">${esc(r.narr)}</td><td class="r num">${r.dir === 'in' ? P.fmtINR(r.paise) : ''}</td><td class="r num">${r.dir === 'out' ? P.fmtINR(r.paise) : ''}</td><td class="r num">${r.balPaise != null ? P.fmtINR(r.balPaise) : ''}</td></tr>`).join('')}
+      </tbody></table></div>
+      <div class="actions"><button class="primary" data-act="reconcile" ${p.length && !S.busy.recon ? '' : 'disabled'}>${S.busy.recon ? 'Reconciling…' : `Reconcile ${p.length} rows`}</button><button data-act="st-clear">Cancel</button></div>`;
+  }
+  if (st.result) imp += `<div class="status info">${st.result}</div>`;
+  imp += `</div>`;
+  const tbl = `<div class="panel tablewrap"><h3>Imported for ${esc(acctName(st.acct))}</h3>${done.length ? `<table><thead><tr><th>Period</th><th class="r">Rows</th><th class="r">Matched</th><th class="r">Added</th><th class="r">Alert not on stmt</th><th>Balance check</th><th>Imported</th></tr></thead><tbody>
+    ${done.map(s => `<tr><td>${dShort(s.from)} – ${dLong(s.to)}</td><td class="r num">${s.rows}</td><td class="r num">${s.matched}</td><td class="r num">${s.added}</td><td class="r num">${s.missing}</td>
+      <td>${s.balanced === true ? '<span class="tag good">Adds up</span>' : s.balanced === false ? '<span class="tag crit">Mismatch</span>' : '—'}${s.closing != null ? ` <span class="num small">${P.fmtINR(s.closing)}</span>` : ''}</td><td class="small muted">${ago(s.importedAt)}</td></tr>`).join('')}
+  </tbody></table>` : '<p class="muted">No statements imported for this account yet.</p>'}</div>`;
+  return imp + tbl;
+}
+
+// The spreadsheet reader is only needed for imports, so it loads on first use.
+let xlsxPromise = null;
+function loadXlsx() {
+  if (window.XLSX) return Promise.resolve();
+  xlsxPromise = xlsxPromise || new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    s.onload = () => res(); s.onerror = () => { xlsxPromise = null; rej(new Error('The spreadsheet reader did not load. Check your connection and pick the file again.')); };
+    document.head.appendChild(s);
+  });
+  return xlsxPromise;
+}
+
+async function loadStatementFile(file) {
+  const st = S.stmt; st.error = null; st.result = null; st.rows = st.map = st.parsed = null;
+  try {
+    await loadXlsx();
+    const isCsv = /\.csv$/i.test(file.name) || file.type === 'text/csv';
+    const wb = isCsv ? XLSX.read(await file.text(), { type: 'string', raw: true }) : XLSX.read(new Uint8Array(await file.arrayBuffer()), { type: 'array' });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: '' });
+    const map = P.detectColumns(rows);
+    if (!map) throw new Error('Could not find a header row with Date and Narration/Description columns in this file.');
+    st.rows = rows; st.map = map; st.file = file.name; st.parsed = P.statementRows(rows, map);
+    if (!st.parsed.length) st.error = 'Found the header row but no transaction rows under it. Check the column choices below.';
+  } catch (e) { st.error = e.message || String(e); }
+  schedule();
+}
+
+async function reconcile() {
+  const st = S.stmt; const rows = st.parsed; const a = S.accounts.get(st.acct);
+  if (!rows || !rows.length || !a) return;
+  S.busy.recon = true; schedule();
+  try {
+    const tot = P.statementTotals(rows);
+    const lo = new Date(Date.parse(tot.from) - 4 * 86400000).toISOString().slice(0, 10);
+    const hi = new Date(Date.parse(tot.to) + 4 * 86400000).toISOString().slice(0, 10);
+    const cands = [...S.txns.values()].filter(t => t.acct === a.id && t.date >= lo && t.date <= hi);
+    const m = P.matchStatement(rows, cands);
+    let matched = 0, added = 0, missing = 0;
+    for (const [ri, ti] of m.pairs) {
+      const r = rows[ri], t = cands[ti];
+      const patch = { recon: t.recon === 'stmt_only' ? 'stmt_only' : 'matched', stmtNarr: r.narr, stmtBal: r.balPaise, updated: Date.now() };
+      if (!t.ref && r.ref) patch.ref = r.ref;
+      if (!t.party && r.party) patch.party = r.party;
+      await updDoc('txns/' + t.id, patch); matched++;
+    }
+    for (const ri of m.unmatchedRows) {
+      const r = rows[ri];
+      const base = { bank: a.bank, last4: a.last4, dir: r.dir, paise: r.paise, ref: r.ref, date: r.date, narr: r.narr };
+      const id = docId(P.txnId(base));
+      if (S.txns.has(id)) { await updDoc('txns/' + id, { recon: 'matched', stmtNarr: r.narr, stmtBal: r.balPaise }); matched++; continue; }
+      const doc = newTxnDoc({ ...base, mode: r.mode, party: r.party, vpa: r.vpa, ts: Date.parse(r.date + 'T12:00:00+05:30') + ri, balPaise: null, parser: 'statement' }, id, a);
+      doc.recon = 'stmt_only'; doc.stmtNarr = r.narr; doc.stmtBal = r.balPaise; doc.src = { stmt: true };
+      await setDoc('txns/' + id, doc); added++;
+    }
+    for (const ti of m.unmatchedTxns) {
+      const t = cands[ti];
+      if (t.date >= tot.from && t.date <= tot.to && t.recon !== 'missing_in_stmt') { await updDoc('txns/' + t.id, { recon: 'missing_in_stmt', updated: Date.now() }); missing++; }
+      else if (t.date >= tot.from && t.date <= tot.to) missing++;
+    }
+    await setDoc(`statements/${docId(`${a.id}_${tot.from}_${tot.to}`)}`, { acct: a.id, from: tot.from, to: tot.to, rows: rows.length, matched, added, missing,
+      opening: tot.opening, closing: tot.closing, balanced: tot.balanced, inPaise: tot.inPaise, outPaise: tot.outPaise, file: st.file || '', importedAt: Date.now() });
+    st.rows = st.map = st.parsed = null;
+    st.result = `Reconciled ${rows.length} rows: <b>${matched}</b> matched an alert, <b>${added}</b> had no alert and were added to your to-do list${missing ? `, <b>${missing}</b> alert${missing === 1 ? '' : 's'} weren't on the statement (check them under To do)` : ''}.`;
+  } catch (e) { st.error = 'Reconcile stopped: ' + (e.message || e.code || e); }
+  S.busy.recon = false; schedule();
+}
+
+// ---------- setup ----------
+function viewSetup() {
+  const accts = [...S.accounts.values()].sort((a, b) => a.id.localeCompare(b.id));
+  const rules = [...S.rules.values()];
+  return `<div class="panel"><h3>Bank accounts</h3><p class="small muted">Picked up automatically from alert emails. Choose which company each one belongs to; untracked accounts are ignored on future syncs.</p>
+    ${accts.length ? `<div class="tablewrap"><table><thead><tr><th>Account</th><th>Belongs to</th><th class="r">Transactions</th></tr></thead><tbody>${accts.map(a => `<tr><td>${esc(acctName(a.id))}</td>
+      <td><select id="acct-${esc(a.id)}" data-field="acct-entity" data-acct="${esc(a.id)}" aria-label="Owner of ${esc(acctName(a.id))}"><option value="">Choose…</option>${Object.entries(ENTITIES).map(([k, l]) => `<option value="${k}" ${a.entity === k ? 'selected' : ''}>${l}</option>`).join('')}<option value="ignore" ${a.entity === 'ignore' ? 'selected' : ''}>Don't track</option></select></td>
+      <td class="r num">${[...S.txns.values()].filter(t => t.acct === a.id).length}</td></tr>`).join('')}</tbody></table></div>` : '<p class="muted">None yet. Run a sync.</p>'}</div>
+  <div class="panel"><h3>Read alerts from</h3><div class="toolbar"><input type="date" id="since" data-field="since" value="${esc(S.settings.since || DEFAULT_SINCE)}" aria-label="Start date">
+    <span class="small muted">Gmail is searched from this date on the first sync, then from the last email it saw.</span></div>
+    <div class="actions"><button data-act="resync">Re-read everything from this date</button></div></div>
+  <div class="panel"><h3>Payee rules</h3><p class="small muted">Created when you tick "Same for future" on a transaction. New transactions from that payee are labelled for you; you still attach invoices.</p>
+    ${rules.length ? `<div class="tablewrap"><table><thead><tr><th>Payee</th><th>Labelled as</th><th></th></tr></thead><tbody>${rules.map(r => `<tr><td>${esc(r.label || r.key)}</td><td>${esc(r.kind === 'business' ? r.cat : KINDS[r.kind] ? KINDS[r.kind][r.dir || 'out'] : r.kind)}</td><td class="r"><button class="ghost" data-act="rule-del" data-id="${esc(r.id)}">Delete</button></td></tr>`).join('')}</tbody></table></div>` : '<p class="muted">No rules yet.</p>'}</div>
+  <div class="grid2"><div class="panel"><h3>Expense categories</h3><textarea id="cats-out" data-field="cats-out" aria-label="Expense categories, one per line">${esc(catsOut().join('\n'))}</textarea><div class="actions"><button data-act="save-cats">Save categories</button></div></div>
+  <div class="panel"><h3>Income categories</h3><textarea id="cats-in" data-field="cats-in" aria-label="Income categories, one per line">${esc(catsIn().join('\n'))}</textarea><div class="actions"><button data-act="save-cats">Save categories</button></div></div></div>`;
+}
+
+// ---------- Gmail ----------
+function gmailErr(e) {
+  const c = e && e.code;
+  if (c === 'server_not_connected' || c === 'selection_required') return 'Gmail isn\'t connected for your account. Add it in claude.ai Settings → Connectors, then sync again.';
+  if (c === 'needs_reauth') return 'Gmail needs to be reconnected. Reconnect it in claude.ai Settings → Connectors.';
+  if (c === 'not_in_manifest' || c === 'approval_required' || c === 'consent_required') return 'Books needs your OK to read Gmail. Press Sync and choose Allow when claude.ai asks.';
+  if (c === 'not_granted' || c === 'capability_disabled') return 'Gmail can\'t be reached from this view. Open Books in claude.ai.';
+  return 'Gmail error: ' + ((e && (e.message || c)) || String(e));
+}
+async function gmail(tool, input) {
+  try { return (await S.mcp.callTool(GMAIL, tool, input, { cache: false })).payload || {}; }
+  catch (e) {
+    if (e && e.retryable) { await sleep(e.retryAfterMs || 1500 + Math.random() * 1000); return (await S.mcp.callTool(GMAIL, tool, input, { cache: false })).payload || {}; }
+    throw e;
+  }
+}
+async function pool(items, n, fn) { let i = 0; await Promise.all(Array.from({ length: Math.min(n, items.length) }, async () => { while (i < items.length) { const k = i++; await fn(items[k], k); } })); }
+
+function newTxnDoc(t, id, a) {
+  const doc = {
+    id, acct: a ? a.id : P.acctId(t), bank: t.bank, last4: t.last4, dir: t.dir, paise: t.paise, date: t.date, ts: t.ts || null,
+    mode: t.mode || null, ref: t.ref || null, party: t.party || null, vpa: t.vpa || null, narr: t.narr || null,
+    balPaise: t.balPaise == null ? null : t.balPaise, parser: t.parser || null, mails: t.mail ? [t.mail] : [], src: { alert: !!t.mail },
+    kind: null, cat: null, note: '', status: 'todo', inv: { state: 'missing', items: [] }, recon: null, created: Date.now(), updated: Date.now(),
+  };
+  const key = P.partyKey(doc); const rule = key && S.rules.get(docId(key));
+  if (rule && (!rule.dir || rule.dir === doc.dir)) { doc.kind = rule.kind; doc.cat = rule.cat || null; doc.status = 'done'; doc.auto = true; if (rule.kind !== 'business') doc.inv = { state: 'not_needed', items: [] }; }
+  return doc;
+}
+
+async function runSync(opts = {}) {
+  if (S.syncing || !S.mcp || !S.db) return;
+  S.syncMsg = null;
+  const since = opts.full || !S.sync.lastMailMs ? (S.settings.since || DEFAULT_SINCE) : P.istDate(S.sync.lastMailMs - 3 * 86400000);
+  S.syncing = { phase: 'Looking for bank alerts', done: 0, total: 0 }; schedule();
+  const seen = new Set(opts.full ? [] : S.seen);
+  for (const t of S.txns.values()) for (const m of t.mails || []) seen.add(m.id);
+  let found = 0, created = 0, merged = 0, skipped = 0, failed = 0, maxMs = S.sync.lastMailMs || 0;
+  try {
+    const query = `from:(${SENDERS.join(' OR ')}) after:${since.replace(/-/g, '/')}`;
+    const ids = []; let token;
+    do {
+      const p = await gmail('search_threads', Object.assign({ query, pageSize: 50, view: 'THREAD_VIEW_METADATA_ONLY' }, token ? { pageToken: token } : {}));
+      for (const th of p.threads || []) {
+        let msgs = th.messages || [];
+        if ((th.messageCount || 0) > msgs.length) { const full = await gmail('get_thread', { threadId: th.id, messageFormat: 'METADATA_ONLY' }); msgs = full.messages || msgs; }
+        for (const m of msgs) if (!seen.has(m.id) && SENDERS.some(s => (m.sender || '').toLowerCase().includes(s))) ids.push(m.id);
+      }
+      token = p.nextPageToken;
+      S.syncing.phase = `Found ${ids.length} new alert email${ids.length === 1 ? '' : 's'}`; schedule();
+    } while (token);
+    found = ids.length;
+    S.syncing = { phase: 'Reading alerts', done: 0, total: ids.length }; schedule();
+    const parsed = []; const newSeen = [];
+    await pool(ids, 4, async id => {
+      try {
+        const m = await gmail('get_message', { messageId: id, messageFormat: 'FULL_CONTENT' });
+        const t = P.parseAlert({ id: m.id || id, from: m.sender, subject: m.subject, date: m.date, body: m.plaintextBody, html: m.htmlBody, snippet: m.snippet, url: m.viewUrl });
+        if (t) parsed.push(t); else skipped++;
+        newSeen.push(id);
+        const ms = Date.parse(m.date); if (ms > maxMs) maxMs = ms;
+      } catch (e) { if (['server_not_connected', 'needs_reauth', 'not_in_manifest', 'approval_required', 'not_granted'].includes(e && e.code)) throw e; failed++; }
+      S.syncing.done++; schedule();
+    });
+    S.syncing = { phase: 'Saving to your books', done: 0, total: parsed.length }; schedule();
+    for (const t of parsed) {
+      const aid = P.acctId(t);
+      let a = S.accounts.get(aid);
+      if (!a) { a = { id: aid, bank: t.bank, last4: t.last4, entity: null, firstSeen: Date.now() }; await setDoc('accounts/' + aid, a); S.accounts.set(aid, a); }
+      if (a.entity === 'ignore') { S.syncing.done++; continue; }
+      const id = docId(P.txnId(t)); const ex = S.txns.get(id);
+      if (ex) {
+        const mails = ex.mails || [];
+        if (t.mail && !mails.some(x => x.id === t.mail.id)) {
+          const patch = { mails: mails.concat([t.mail]).slice(-4), src: Object.assign({}, ex.src, { alert: true }), updated: Date.now() };
+          if (ex.balPaise == null && t.balPaise != null) patch.balPaise = t.balPaise;
+          if (!ex.ts && t.ts) patch.ts = t.ts;
+          if (ex.recon === 'stmt_only') patch.recon = 'matched';
+          await updDoc('txns/' + id, patch);
+        }
+        merged++;
+      } else {
+        const doc = newTxnDoc(t, id, a); await setDoc('txns/' + id, doc); S.txns.set(id, doc); created++;
+      }
+      S.syncing.done++; schedule();
+    }
+    await pairInterCompany();
+    const allSeen = [...new Set(S.seen.concat(newSeen))].slice(-4000);
+    await setDoc('meta/seen', { ids: allSeen });
+    await setDoc('meta/sync', { lastRun: Date.now(), lastMailMs: maxMs || null, lastFound: found, lastNew: created });
+    S.syncMsg = { tone: failed ? 'warn' : 'info', html: `Sync done. ${created ? `<b>${created}</b> new transaction${created === 1 ? '' : 's'} to review` : 'No new transactions'}${merged ? `, ${merged} already known` : ''}${failed ? `. ${failed} email${failed === 1 ? '' : 's'} couldn't be read; the next sync will try them again` : ''}.` };
+  } catch (e) {
+    S.syncMsg = { tone: 'crit', html: esc(gmailErr(e)) };
+  }
+  S.syncing = null; schedule();
+}
+
+// Same reference leaving one tracked account and arriving in another = money moving between the companies.
+async function pairInterCompany() {
+  const byRef = {};
+  for (const t of S.txns.values()) if (t.ref && tracked(t)) (byRef[t.ref + ':' + t.paise] = byRef[t.ref + ':' + t.paise] || []).push(t);
+  for (const list of Object.values(byRef)) {
+    const o = list.find(t => t.dir === 'out'), i = list.find(t => t.dir === 'in');
+    if (!o || !i || o.acct === i.acct) continue;
+    const kind = entityOf(o) === entityOf(i) ? 'transfer' : 'intercompany';
+    for (const [t, other] of [[o, i], [i, o]]) {
+      if (t.pairId === other.id) continue;
+      const patch = { pairId: other.id, updated: Date.now() };
+      if (t.status === 'todo' && !t.kind) { patch.kind = kind; patch.inv = { state: 'not_needed', items: [] }; }
+      await updDoc('txns/' + t.id, patch);
+    }
+  }
+}
+
+// ---------- actions ----------
+async function saveTxn(id) {
+  const t = S.txns.get(id); const d = S.draft[id]; if (!t || !d) return;
+  S.busy['err-' + id] = null;
+  if (!d.kind) { S.busy['err-' + id] = 'Pick what this is first.'; return schedule(); }
+  if (d.kind === 'business' && !d.cat) { S.busy['err-' + id] = 'Pick a category.'; return schedule(); }
+  S.busy[id] = true; schedule();
+  try {
+    const patch = { kind: d.kind, cat: d.kind === 'business' ? d.cat : null, note: d.note.trim(), status: 'done', auto: false, updated: Date.now() };
+    if (d.kind !== 'business' && (!t.inv || t.inv.state === 'missing')) patch.inv = { state: 'not_needed', items: [] };
+    if (d.kind === 'business' && t.inv && t.inv.state === 'not_needed' && !(t.inv.items || []).length && t.dir === 'out' && t.kind !== 'business') patch.inv = { state: 'missing', items: [] };
+    await updDoc('txns/' + id, patch);
+    const key = P.partyKey(t);
+    if (d.remember && key) {
+      const rid = docId(key);
+      await setDoc('rules/' + rid, { id: rid, key, label: t.party || t.vpa, dir: t.dir, kind: d.kind, cat: patch.cat, created: Date.now() });
+      for (const o of S.txns.values()) {
+        if (o.id !== id && o.status === 'todo' && o.dir === t.dir && P.partyKey(o) === key) {
+          await updDoc('txns/' + o.id, { kind: d.kind, cat: patch.cat, status: 'done', auto: true, updated: Date.now(), ...(d.kind !== 'business' ? { inv: { state: 'not_needed', items: [] } } : {}) });
+        }
+      }
+    }
+    delete S.draft[id]; if (S.editing === id) S.editing = null;
+  } catch (e) { S.busy['err-' + id] = 'Not saved: ' + (e.message || e.code); }
+  S.busy[id] = false; schedule();
+}
+
+async function setInv(id, inv) { const t = S.txns.get(id); if (!t) return; await updDoc('txns/' + id, { inv, updated: Date.now() }); }
+
+async function invSearch(id) {
+  const st = S.inv[id]; if (!st) return;
+  st.loading = true; st.error = null; schedule();
+  try {
+    const p = await gmail('search_threads', { query: st.q, pageSize: 8 });
+    st.results = (p.threads || []).map(th => { const m = (th.messages || [])[0] || {}; return { id: m.id, url: m.viewUrl || th.viewUrl, subject: m.subject, from: m.sender, date: m.date, snippet: P.squash(P.htmlToText(m.snippet || '')) }; });
+  } catch (e) { st.error = gmailErr(e); }
+  st.loading = false; schedule();
+}
+
+async function upload(id, file) {
+  const t = S.txns.get(id); if (!t || !file) return;
+  S.busy['err-' + id] = null; schedule();
+  try {
+    const r = await S.assets.upload(file, file.type ? undefined : { type: 'application/pdf' });
+    const inv = t.inv || { items: [] };
+    await setInv(id, { state: 'attached', items: (inv.items || []).concat([{ type: 'file', id: r.id, name: file.name }]) });
+  } catch (e) {
+    S.busy['err-' + id] = e && e.code === 'too_large' ? 'That file is over 20 MB.' : e && e.code === 'unsupported_type' ? 'Upload a PDF or an image.' : 'Upload failed: ' + (e.message || e.code);
+    schedule();
+  }
+}
+
+async function assignAccount(acct, entity) {
+  await updDoc('accounts/' + acct, { entity });
+  const a = S.accounts.get(acct); if (a) S.accounts.set(acct, { ...a, entity });
+  await pairInterCompany();
+}
+
+function flash(tone, html) { S.syncMsg = { tone, html }; schedule(); }
+
+document.addEventListener('click', async ev => {
+  const el = ev.target.closest('[data-act]'); if (!el) return;
+  const act = el.dataset.act, id = el.dataset.id, v = el.dataset.v;
+  if (act === 'sync') return runSync();
+  if (act === 'dismiss-sync') { S.syncMsg = null; return schedule(); }
+  if (act === 'entity') { S.entity = v; return schedule(); }
+  if (act === 'rfilter') { S.reviewFilter = v; return schedule(); }
+  if (act === 'kind') { const t = S.txns.get(id); draftFor(t).kind = v; return schedule(); }
+  if (act === 'save') return saveTxn(id);
+  if (act === 'edit') { S.editing = id; schedule(); return window.scrollTo({ top: 0 }); }
+  if (act === 'close-edit') { S.editing = null; return schedule(); }
+  if (act === 'assign') return assignAccount(el.dataset.acct, v);
+  if (act === 'ack-gap') { await setDoc('meta/settings', { ...S.settings, ackGaps: (S.settings.ackGaps || []).concat([v]) }); return; }
+  if (act === 'inv-find') { const t = S.txns.get(id); const st = S.inv[id] = S.inv[id] || { mode: 'amount' }; st.open = true; st.q = P.invoiceQuery(t, st.mode); return invSearch(id); }
+  if (act === 'inv-mode') { const t = S.txns.get(id); const st = S.inv[id]; st.mode = st.mode === 'party' ? 'amount' : 'party'; st.q = P.invoiceQuery(t, st.mode); return invSearch(id); }
+  if (act === 'inv-search') return invSearch(id);
+  if (act === 'inv-attach') {
+    const t = S.txns.get(id); const r = S.inv[id].results[+v]; const inv = t.inv || { items: [] };
+    if (!(inv.items || []).some(i => i.id === r.id)) await setInv(id, { state: 'attached', items: (inv.items || []).concat([{ type: 'gmail', id: r.id, url: r.url, subject: r.subject || '', from: r.from || '', date: r.date || '' }]) });
+    S.inv[id].open = false; return schedule();
+  }
+  if (act === 'inv-none') return setInv(id, { state: 'not_needed', items: [] });
+  if (act === 'inv-remove') { const t = S.txns.get(id); const items = (t.inv.items || []).filter((_, i) => i !== +v); return setInv(id, { state: items.length ? 'attached' : 'missing', items }); }
+  if (act === 'export') return exportCsv();
+  if (act === 'reconcile') return reconcile();
+  if (act === 'st-clear') { Object.assign(S.stmt, { rows: null, map: null, parsed: null, error: null, result: null }); const f = $('#st-file'); if (f) f.value = ''; return schedule(); }
+  if (act === 'rule-del') { await write(() => S.db.doc('rules/' + id).delete()); return; }
+  if (act === 'save-cats') {
+    const read = sel => ($(sel).value || '').split('\n').map(s => s.trim()).filter(Boolean);
+    await setDoc('meta/settings', { ...S.settings, catsOut: read('#cats-out'), catsIn: read('#cats-in') }); return flash('info', 'Categories saved.');
+  }
+  if (act === 'resync') return runSync({ full: true });
+});
+
+document.addEventListener('keydown', ev => { if (ev.key === 'Enter' && ev.target.matches('tr.click')) ev.target.click(); });
+
+document.addEventListener('input', ev => {
+  const el = ev.target; const f = el.dataset.field; const id = el.dataset.id; if (!f) return;
+  if (f === 'note') draftFor(S.txns.get(id)).note = el.value;
+  else if (f === 'invq') S.inv[id].q = el.value;
+  else if (f === 'lg-q') { S.ledger.q = el.value; schedule(); }
+});
+document.addEventListener('change', async ev => {
+  const el = ev.target; const f = el.dataset.field; const id = el.dataset.id; if (!f) return;
+  if (f === 'cat') { draftFor(S.txns.get(id)).cat = el.value; }
+  else if (f === 'remember') draftFor(S.txns.get(id)).remember = el.checked;
+  else if (f === 'upload') upload(id, el.files[0]);
+  else if (f === 'lg-month') { S.ledger.month = el.value; schedule(); }
+  else if (f === 'lg-kind') { S.ledger.kind = el.value; schedule(); }
+  else if (f === 'fy') { S.fy = +el.value; schedule(); }
+  else if (f === 'st-acct') { S.stmt.acct = el.value; S.stmt.result = null; schedule(); }
+  else if (f === 'st-file') { if (el.files[0]) loadStatementFile(el.files[0]); }
+  else if (f === 'map') { S.stmt.map[el.dataset.v] = +el.value; S.stmt.parsed = P.statementRows(S.stmt.rows, S.stmt.map); schedule(); }
+  else if (f === 'acct-entity') await assignAccount(el.dataset.acct, el.value || null);
+  else if (f === 'since') await setDoc('meta/settings', { ...S.settings, since: el.value || DEFAULT_SINCE });
+});
+
+function route() { const h = location.hash.replace('#', ''); S.view = VIEWS.some(v => v[0] === h) ? h : 'review'; schedule(); }
+window.addEventListener('hashchange', route);
+
+// ---------- boot ----------
+async function boot() {
+  route();
+  if (!window.claude || !window.claude.use) { S.dbState = 'none'; return schedule(); }
+  const db = await window.claude.use('db');
+  if (!db) { S.dbState = 'none'; return schedule(); }
+  S.db = db; S.dbState = 'ok';
+  const onErr = e => flash('crit', 'Lost the connection to your books (' + esc(e.code) + '). Reload the page.');
+  db.collection('txns').orderBy('date', 'desc').limit(1000).onSnapshot(s => { S.txns = new Map(s.docs.map(d => [d.id, { ...d.data(), id: d.id }])); S.loaded.txns = true; schedule(); }, onErr);
+  db.collection('accounts').onSnapshot(s => { S.accounts = new Map(s.docs.map(d => [d.id, { ...d.data(), id: d.id }])); S.loaded.accounts = true; schedule(); }, onErr);
+  db.collection('rules').onSnapshot(s => { S.rules = new Map(s.docs.map(d => [d.id, { ...d.data(), id: d.id }])); schedule(); }, onErr);
+  db.collection('statements').onSnapshot(s => { S.statements = new Map(s.docs.map(d => [d.id, d.data()])); schedule(); }, onErr);
+  db.doc('meta/settings').onSnapshot(s => { S.settings = s.exists ? s.data() : {}; schedule(); }, onErr);
+  db.doc('meta/sync').onSnapshot(s => { S.sync = s.exists ? s.data() : {}; schedule(); }, onErr);
+  db.doc('meta/seen').onSnapshot(s => { S.seen = s.exists ? (s.data().ids || []) : []; }, onErr);
+  schedule();
+  window.claude.use('assets').then(a => { S.assets = a; schedule(); });
+  window.claude.use('downloads').then(d => { S.dl = d; schedule(); });
+  const mcp = await window.claude.use('mcp');
+  S.mcp = mcp; schedule();
+  if (!mcp) return flash('warn', 'Gmail isn\'t available in this view, so syncing is off. Open Books in claude.ai to sync.');
+  // Auto-sync on open when the last run is older than 30 minutes.
+  const wait = Date.now() + 8000;
+  while (!S.loaded.txns && Date.now() < wait) await sleep(200);
+  if (!S.sync.lastRun || Date.now() - S.sync.lastRun > 30 * 60000) runSync();
+}
+render();
+boot();
+</script>
