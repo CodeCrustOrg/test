@@ -20,7 +20,7 @@ Last updated: 28 Oct 2026. Branch `claude/books-ledger` of `CodeCrustOrg/test`. 
 - IndusInd 9477 is AITA because, on 15 Oct 2026, the same UPI reference appears as a debit on 9477 and as a credit on 1366 from "AITA TECHNOLOGIES PRIVATE LIMITED".
 
 **Not tracked:**
-- The owner's sister's IndusInd account ("Palak Garg"; statements arrive in the same mailbox).
+- The owner's sister's IndusInd account (its statements arrive in the same mailbox).
 - The owner's personal account ending 5282, on a different email.
 - The credit cards: HDFC ••7049 and IndusInd ••5208.
 - Federal Bank ••2790.
