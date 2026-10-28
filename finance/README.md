@@ -1,5 +1,7 @@
 # Books
 
+> AI agents: start with [AGENTS.md](AGENTS.md) for architecture, data model, invariants and open items.
+
 Bank ledger for **CodeCrust** (HDFC ••1366) and **AITA Technologies** (IndusInd ••9477).
 
 It reads your bank alert emails, adds every transaction to a ledger, and asks you (on Telegram or in the dashboard) what each one is and where its invoice is. It also reconciles against the monthly statements. It runs on your own computer; no Claude account is involved. OpenRouter is used only for the four jobs listed under "AI".
